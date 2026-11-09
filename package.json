@@ -9,6 +9,11 @@
     "lint": "eslint",
     "postinstall": "prisma generate"
   },
+  "pnpm": {
+    "overrides": {
+      "jwks-rsa>jose": "5.10.0"
+    }
+  },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
