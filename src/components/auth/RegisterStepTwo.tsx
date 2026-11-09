@@ -5,7 +5,6 @@ import { UseFormReturn, useWatch } from "react-hook-form";
 import { FullRegistrationInput } from "@/modules/validators/register.schema";
 import {
   User,
-  Phone,
   Mail,
   Lock,
   Eye,
@@ -13,13 +12,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ShieldCheck,
   CheckCircle2,
   Circle,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ROUTES } from "@/constants/links";
 
 interface StepTwoProps {
   form: UseFormReturn<FullRegistrationInput>;
@@ -28,7 +27,7 @@ interface StepTwoProps {
 }
 
 const inputBase =
-  "w-full h-12 rounded-xl border bg-white dark:bg-neutral-800 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none focus:ring-4 transition-all disabled:opacity-50";
+  "h-12 w-full min-w-0 rounded-xl border bg-white text-sm text-neutral-900 placeholder:text-neutral-400 outline-none transition-all focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60";
 
 function getPasswordRules(password: string) {
   return [
@@ -36,7 +35,10 @@ function getPasswordRules(password: string) {
     { label: "One uppercase letter", valid: /[A-Z]/.test(password) },
     { label: "One lowercase letter", valid: /[a-z]/.test(password) },
     { label: "One number", valid: /\d/.test(password) },
-    { label: "One special character", valid: /[^A-Za-z0-9]/.test(password) },
+    {
+      label: "One special character",
+      valid: /[^A-Za-z0-9]/.test(password),
+    },
   ];
 }
 
@@ -68,6 +70,7 @@ export function RegisterStepTwo({
   );
 
   const passwordScore = passwordRules.filter((rule) => rule.valid).length;
+
   const passwordsMatch =
     Boolean(confirmPassword) && password === confirmPassword;
 
@@ -78,7 +81,7 @@ export function RegisterStepTwo({
         ? { label: "Fair", width: "40%", color: "bg-orange-500" }
         : passwordScore === 4
           ? { label: "Good", width: "70%", color: "bg-yellow-500" }
-          : { label: "Strong", width: "100%", color: "bg-green-500" };
+          : { label: "Strong", width: "100%", color: "bg-green-600" };
 
   const handleNext = async () => {
     if (validating) return;
@@ -118,40 +121,40 @@ export function RegisterStepTwo({
     `${inputBase} px-4 ${
       hasError
         ? "border-red-400 focus:border-red-500 focus:ring-red-500/10"
-        : "border-neutral-200 dark:border-neutral-700 focus:border-purple-500 focus:ring-purple-500/10"
+        : "border-neutral-200 hover:border-neutral-300 focus:border-[#1c3324] focus:ring-[#1c3324]/10"
     }`;
 
   const mobileRegistration = register("mobile");
 
   return (
-    <div className="space-y-5">
-      {/* Section heading */}
-      <div className="flex items-start gap-3 pb-1">
-        <div className="w-10 h-10 shrink-0 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center">
-          <User className="w-5 h-5" />
+    <div className="w-full min-w-0 space-y-5 pb-6 sm:space-y-6 sm:pb-8">
+      {/* Heading */}
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1c3324]/10 text-[#1c3324] sm:h-11 sm:w-11">
+          <User className="h-5 w-5" />
         </div>
 
-        <div>
-          <h3 className="text-base font-bold text-neutral-900 dark:text-white">
+        <div className="min-w-0">
+          <h3 className="text-base font-bold text-neutral-900 sm:text-lg">
             Personal Information
           </h3>
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+          <p className="mt-0.5 text-xs text-neutral-500 sm:text-sm">
             Enter your details to create your Amaze account.
           </p>
         </div>
       </div>
 
-      {/* Full name */}
-      <div className="space-y-1.5">
+      {/* Full Name */}
+      <div className="min-w-0 space-y-1.5">
         <label
           htmlFor="fullName"
-          className="text-sm font-semibold text-neutral-700 dark:text-neutral-300"
+          className="text-sm font-semibold text-neutral-700"
         >
           Full name <span className="text-red-500">*</span>
         </label>
 
         <div className="relative">
-          <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
 
           <input
             id="fullName"
@@ -172,23 +175,23 @@ export function RegisterStepTwo({
         )}
       </div>
 
-      {/* Mobile number */}
-      <div className="space-y-1.5">
+      {/* Mobile Number */}
+      <div className="min-w-0 space-y-1.5">
         <label
           htmlFor="mobile"
-          className="text-sm font-semibold text-neutral-700 dark:text-neutral-300"
+          className="text-sm font-semibold text-neutral-700"
         >
           Mobile number <span className="text-red-500">*</span>
         </label>
 
         <div
-          className={`flex items-center rounded-xl border overflow-hidden transition-all ${
+          className={`flex min-w-0 items-center overflow-hidden rounded-xl border transition-all ${
             errors.mobile
               ? "border-red-400 focus-within:ring-4 focus-within:ring-red-500/10"
-              : "border-neutral-200 dark:border-neutral-700 focus-within:border-purple-500 focus-within:ring-4 focus-within:ring-purple-500/10"
+              : "border-neutral-200 focus-within:border-[#1c3324] focus-within:ring-4 focus-within:ring-[#1c3324]/10"
           }`}
         >
-          <div className="h-12 flex items-center gap-2 px-3.5 border-r border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-sm font-semibold text-neutral-600 dark:text-neutral-300">
+          <div className="flex h-12 shrink-0 items-center gap-2 border-r border-neutral-200 bg-neutral-50 px-3 text-sm font-semibold text-neutral-600 sm:px-4">
             <span>🇮🇳</span>
             <span>+91</span>
           </div>
@@ -211,11 +214,11 @@ export function RegisterStepTwo({
               });
             }}
             aria-invalid={!!errors.mobile}
-            className="w-full h-12 px-4 text-sm bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:outline-none"
+            className="h-12 min-w-0 flex-1 bg-white px-3 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 sm:px-4"
           />
 
           {mobile?.length === 10 && (
-            <CheckCircle2 className="w-4 h-4 text-green-500 mr-3 shrink-0" />
+            <CheckCircle2 className="mr-3 h-4 w-4 shrink-0 text-green-600" />
           )}
         </div>
 
@@ -224,26 +227,26 @@ export function RegisterStepTwo({
             {errors.mobile.message}
           </p>
         ) : (
-          <p className="text-[11px] text-neutral-400">
-            We'll send an OTP to verify your mobile number.
+          <p className="text-xs text-neutral-400">
+            An OTP will be sent to verify your number.
           </p>
         )}
       </div>
 
       {/* Email */}
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         <label
           htmlFor="email"
-          className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 flex items-center gap-2"
+          className="flex flex-wrap items-center gap-2 text-sm font-semibold text-neutral-700"
         >
           Email address
-          <span className="text-[10px] font-medium text-neutral-400 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
+          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-500">
             OPTIONAL
           </span>
         </label>
 
         <div className="relative">
-          <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Mail className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
 
           <input
             id="email"
@@ -265,16 +268,16 @@ export function RegisterStepTwo({
       </div>
 
       {/* Password */}
-      <div className="space-y-1.5">
+      <div className="min-w-0 space-y-1.5">
         <label
           htmlFor="password"
-          className="text-sm font-semibold text-neutral-700 dark:text-neutral-300"
+          className="text-sm font-semibold text-neutral-700"
         >
           Create password <span className="text-red-500">*</span>
         </label>
 
         <div className="relative">
-          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
 
           <input
             id="password"
@@ -292,52 +295,50 @@ export function RegisterStepTwo({
             onClick={() => setShowPass((value) => !value)}
             disabled={validating}
             aria-label={showPass ? "Hide password" : "Show password"}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-purple-600"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-neutral-400 transition-colors hover:text-[#1c3324]"
           >
             {showPass ? (
-              <EyeOff className="w-4.5 h-4.5" />
+              <EyeOff className="h-4 w-4" />
             ) : (
-              <Eye className="w-4.5 h-4.5" />
+              <Eye className="h-4 w-4" />
             )}
           </button>
         </div>
 
-        {/* Password strength */}
+        {/* Password Strength */}
         {password && (
           <div className="space-y-2 pt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-[11px] text-neutral-500">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-neutral-500">
                 Password strength
               </span>
 
-              <span className="text-[11px] font-semibold text-neutral-600 dark:text-neutral-300">
+              <span className="text-xs font-semibold text-neutral-700">
                 {passwordStrength.label}
               </span>
             </div>
 
-            <div className="h-1.5 rounded-full bg-neutral-100 dark:bg-neutral-800 overflow-hidden">
+            <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${passwordStrength.color}`}
                 style={{ width: passwordStrength.width }}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-2 min-[380px]:grid-cols-2">
               {passwordRules.map((rule) => (
                 <div
                   key={rule.label}
-                  className={`flex items-center gap-1.5 text-[10px] ${
-                    rule.valid
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-neutral-400"
+                  className={`flex min-w-0 items-center gap-1.5 text-[11px] ${
+                    rule.valid ? "text-green-700" : "text-neutral-400"
                   }`}
                 >
                   {rule.valid ? (
-                    <Check className="w-3 h-3" />
+                    <Check className="h-3.5 w-3.5 shrink-0" />
                   ) : (
-                    <Circle className="w-3 h-3" />
+                    <Circle className="h-3.5 w-3.5 shrink-0" />
                   )}
-                  {rule.label}
+                  <span>{rule.label}</span>
                 </div>
               ))}
             </div>
@@ -351,17 +352,17 @@ export function RegisterStepTwo({
         )}
       </div>
 
-      {/* Confirm password */}
-      <div className="space-y-1.5">
+      {/* Confirm Password */}
+      <div className="min-w-0 space-y-1.5">
         <label
           htmlFor="confirmPassword"
-          className="text-sm font-semibold text-neutral-700 dark:text-neutral-300"
+          className="text-sm font-semibold text-neutral-700"
         >
           Confirm password <span className="text-red-500">*</span>
         </label>
 
         <div className="relative">
-          <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+          <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
 
           <input
             id="confirmPassword"
@@ -379,12 +380,12 @@ export function RegisterStepTwo({
             onClick={() => setShowConfirm((value) => !value)}
             disabled={validating}
             aria-label={showConfirm ? "Hide password" : "Show password"}
-            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-purple-600"
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-neutral-400 transition-colors hover:text-[#1c3324]"
           >
             {showConfirm ? (
-              <EyeOff className="w-4.5 h-4.5" />
+              <EyeOff className="h-4 w-4" />
             ) : (
-              <Eye className="w-4.5 h-4.5" />
+              <Eye className="h-4 w-4" />
             )}
           </button>
         </div>
@@ -394,8 +395,8 @@ export function RegisterStepTwo({
             {errors.confirmPassword.message}
           </p>
         ) : passwordsMatch ? (
-          <p className="text-xs text-green-600 flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
+          <p className="flex items-center gap-1 text-xs text-green-700">
+            <CheckCircle2 className="h-3.5 w-3.5" />
             Passwords match
           </p>
         ) : confirmPassword ? (
@@ -403,30 +404,32 @@ export function RegisterStepTwo({
         ) : null}
       </div>
 
-      {/* Terms */}
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-neutral-800/30 p-3.5">
-        <label className="flex items-start gap-3 cursor-pointer">
+      {/* Terms and Conditions */}
+      <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 sm:p-4">
+        <label className="flex cursor-pointer items-start gap-3">
           <input
             type="checkbox"
             {...register("acceptTerms")}
             disabled={validating}
-            className="mt-0.5 w-4 h-4 accent-purple-600 rounded border-neutral-300 focus:ring-purple-500"
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[#1c3324] focus:ring-[#1c3324]"
           />
 
-          <span className="text-xs leading-5 text-neutral-600 dark:text-neutral-400">
-            I agree to Amaze's{" "}
+          <span className="text-xs leading-5 text-neutral-600 sm:text-sm">
+            I agree to Amaze&apos;s{" "}
             <Link
-              href="/terms"
+              href={ROUTES.TERMS}
               target="_blank"
-              className="font-semibold text-purple-600 hover:underline"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#1c3324] underline underline-offset-2"
             >
               Terms and Conditions
             </Link>{" "}
             and{" "}
             <Link
-              href="/privacy"
+              href={ROUTES.PRIVACY}
               target="_blank"
-              className="font-semibold text-purple-600 hover:underline"
+              rel="noopener noreferrer"
+              className="font-semibold text-[#1c3324] underline underline-offset-2"
             >
               Privacy Policy
             </Link>
@@ -435,27 +438,21 @@ export function RegisterStepTwo({
         </label>
 
         {errors.acceptTerms && (
-          <p className="text-xs text-red-500 mt-2" role="alert">
+          <p className="mt-2 text-xs text-red-500" role="alert">
             {errors.acceptTerms.message}
           </p>
         )}
       </div>
 
-      {/* Security reassurance */}
-      <div className="flex items-center gap-2 text-[11px] text-neutral-400">
-        <ShieldCheck className="w-4 h-4 text-green-600 shrink-0" />
-        Your information is protected and securely processed.
-      </div>
-
       {/* Navigation */}
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-col-reverse gap-3 pt-1 min-[380px]:flex-row">
         <button
           type="button"
           onClick={onBack}
           disabled={validating}
-          className="h-12 px-5 border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 text-sm font-semibold rounded-xl flex items-center justify-center gap-2 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-5 text-sm font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 disabled:opacity-50 min-[380px]:w-auto"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
           Back
         </button>
 
@@ -463,17 +460,17 @@ export function RegisterStepTwo({
           type="button"
           onClick={handleNext}
           disabled={validating}
-          className="flex-1 h-12 bg-purple-600 hover:bg-purple-700 active:scale-[0.99] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-purple-600/15 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+          className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#1c3324] px-5 text-sm font-semibold text-white shadow-lg shadow-[#1c3324]/15 transition-all hover:bg-[#294a34] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {validating ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
               Checking details...
             </>
           ) : (
             <>
               Continue to OTP
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="h-4 w-4" />
             </>
           )}
         </button>

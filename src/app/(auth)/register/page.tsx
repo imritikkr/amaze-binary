@@ -9,7 +9,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   Leaf,
   Loader2,
@@ -175,7 +174,7 @@ function RegisterFormContent() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="w-full space-y-4 sm:space-y-5">
       {/* Registration heading */}
       <div className="text-center">
         <div className="mb-3 flex justify-center">
@@ -189,7 +188,7 @@ function RegisterFormContent() {
           Create your account
         </h2>
 
-        <p className="mt-1.5 text-xs leading-5 text-[#7d887b]">
+        <p className="mt-1.5 text-xs leading-5 text-[#7d887b] sm:text-sm">
           Complete the steps below to join the Amaze Ayurveda community.
         </p>
       </div>
@@ -200,7 +199,7 @@ function RegisterFormContent() {
       </div>
 
       {/* Form content */}
-      <div>
+      <div className="w-full min-w-0">
         {step === 1 && (
           <RegisterStepOne form={form} onNext={() => setStep(2)} />
         )}
@@ -262,9 +261,10 @@ export default function RegisterPage() {
   }, []);
 
   return (
-    <main className="font-sora relative flex  w-full items-center justify-center overflow-hidden bg-[#f8f7f1] p-2 pt-12 sm:p-4 sm:pt-12">
+    <main className="relative min-h-screen w-full overflow-x-clip bg-[#f8f7f1] font-sora">
       {/* Background decoration */}
       <div className="pointer-events-none absolute -left-32 -top-32 h-80 w-80 rounded-full bg-[#dce7d9]/60 blur-3xl" />
+
       <div className="pointer-events-none absolute -bottom-32 -right-32 h-80 w-80 rounded-full bg-[#f3e5c6]/60 blur-3xl" />
 
       {/* Back button */}
@@ -276,113 +276,116 @@ export default function RegisterPage() {
         Back
       </Link>
 
-      {/* Main card */}
-      <div className="relative mx-auto grid h-full max-h-[740px] w-full max-w-6xl overflow-hidden rounded-2xl border border-[#e8e8df] bg-white shadow-[0_25px_80px_rgba(28,51,36,0.09)] lg:grid-cols-2">
-        {/* Left branding panel */}
-        <section className="relative hidden min-h-0 flex-col justify-between overflow-hidden bg-[#1c3324] p-8 text-white lg:flex xl:p-10">
-          <div className="pointer-events-none absolute -right-32 -top-24 h-96 w-96 rounded-full border border-white/10" />
-          <div className="pointer-events-none absolute -right-20 -top-12 h-72 w-72 rounded-full border border-white/10" />
-          <div className="pointer-events-none absolute -bottom-36 -left-24 h-96 w-96 rounded-full bg-[#e8a020]/10 blur-3xl" />
+      {/* Main content */}
+      <div className="relative mx-auto w-full max-w-7xl px-3 pb-8 pt-16 sm:px-5 sm:pb-12 sm:pt-20 lg:px-8">
+        <div className="grid w-full grid-cols-1 overflow-visible rounded-2xl border border-[#e8e8df] bg-white shadow-[0_25px_80px_rgba(28,51,36,0.09)] lg:grid-cols-2">
+          {/* Left branding panel */}
+          <section className="relative hidden flex-col justify-between overflow-hidden rounded-l-2xl bg-[#1c3324] p-8 text-white lg:flex xl:p-10">
+            <div className="pointer-events-none absolute -right-32 -top-24 h-96 w-96 rounded-full border border-white/10" />
 
-          <div className="relative z-10">
-            <Link href={ROUTES.HOME} className="inline-flex items-center">
-              <Image
-                src="/amaze-logo.png"
-                alt="Amaze Ayurveda"
-                width={180}
-                height={65}
-                priority
-                className="h-12 w-auto object-contain"
-              />
-            </Link>
+            <div className="pointer-events-none absolute -right-20 -top-12 h-72 w-72 rounded-full border border-white/10" />
 
-            <div className="mt-10 max-w-md">
-              <span className="inline-flex items-center gap-2 rounded-full border border-[#e8a020]/30 bg-[#e8a020]/10 px-3 py-1.5 text-[10px] font-medium tracking-wide text-[#f2c46d]">
-                <Sparkles className="h-3 w-3" />
-                ANCIENT WISDOM. MODERN WELLNESS.
-              </span>
+            <div className="pointer-events-none absolute -bottom-36 -left-24 h-96 w-96 rounded-full bg-[#e8a020]/10 blur-3xl" />
 
-              <h1 className="mt-6 text-3xl font-semibold leading-[1.2] tracking-tight xl:text-4xl">
-                Begin your
-                <span className="mt-1 block text-[#e8a020]">
-                  journey with Amaze.
+            <div className="relative z-10">
+              <Link href={ROUTES.HOME} className="inline-flex items-center">
+                <Image
+                  src="/amaze-logo.png"
+                  alt="Amaze Ayurveda"
+                  width={180}
+                  height={65}
+                  priority
+                  className="h-12 w-auto object-contain"
+                />
+              </Link>
+
+              <div className="mt-10 max-w-md">
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#e8a020]/30 bg-[#e8a020]/10 px-3 py-1.5 text-[10px] font-medium tracking-wide text-[#f2c46d]">
+                  <Sparkles className="h-3 w-3" />
+                  ANCIENT WISDOM. MODERN WELLNESS.
                 </span>
-              </h1>
 
-              <p className="mt-4 max-w-sm text-xs leading-6 text-white/65 xl:text-sm">
-                Create your account and discover our product range, community
-                and business opportunity.
+                <h1 className="mt-6 text-3xl font-semibold leading-[1.2] tracking-tight xl:text-4xl">
+                  Begin your
+                  <span className="mt-1 block text-[#e8a020]">
+                    journey with Amaze.
+                  </span>
+                </h1>
+
+                <p className="mt-4 max-w-sm text-xs leading-6 text-white/65 xl:text-sm">
+                  Create your account and discover our product range, community
+                  and business opportunity.
+                </p>
+
+                <div className="mt-8 space-y-4">
+                  {[
+                    "Simple guided registration",
+                    "Mobile OTP verification",
+                    "Access to the Amaze community",
+                  ].map((item) => (
+                    <div key={item} className="flex items-center gap-3">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-[#e8a020]">
+                        <CheckCircle2 size={15} />
+                      </span>
+
+                      <span className="text-xs font-medium text-white/80">
+                        {item}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="relative z-10">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
+                  <ShieldCheck className="mb-3 h-5 w-5 text-[#e8a020]" />
+                  <p className="text-xs font-semibold">Secure signup</p>
+                  <p className="mt-1 text-[10px] leading-4 text-white/50">
+                    Mobile verification for your account.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
+                  <Leaf className="mb-3 h-5 w-5 text-[#e8a020]" />
+                  <p className="text-xs font-semibold">Amaze Ayurveda</p>
+                  <p className="mt-1 text-[10px] leading-4 text-white/50">
+                    Ancient Wisdom. Modern Wellness.
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-5 text-[10px] text-white/35">
+                © {currentYear ?? "2026"} Amaze. All rights reserved.
               </p>
-
-              <div className="mt-8 space-y-4">
-                {[
-                  "Simple guided registration",
-                  "Mobile OTP verification",
-                  "Access to the Amaze community",
-                ].map((item) => (
-                  <div key={item} className="flex items-center gap-3">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-[#e8a020]">
-                      <CheckCircle2 size={15} />
-                    </span>
-                    <span className="text-xs font-medium text-white/80">
-                      {item}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="relative z-10">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
-                <ShieldCheck className="mb-3 h-5 w-5 text-[#e8a020]" />
-                <p className="text-xs font-semibold">Secure signup</p>
-                <p className="mt-1 text-[10px] leading-4 text-white/50">
-                  Mobile verification for your account.
-                </p>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.06] p-4">
-                <Leaf className="mb-3 h-5 w-5 text-[#e8a020]" />
-                <p className="text-xs font-semibold">Amaze Ayurveda</p>
-                <p className="mt-1 text-[10px] leading-4 text-white/50">
-                  Ancient Wisdom. Modern Wellness.
-                </p>
-              </div>
+          {/* Registration section */}
+          <section className="flex min-w-0 flex-col px-4 py-6 sm:px-7 sm:py-8 lg:px-9 lg:py-10 xl:px-12">
+            {/* Mobile logo */}
+            <div className="mb-5 flex justify-center lg:hidden">
+              <Link href={ROUTES.HOME}>
+                <Image
+                  src="/amaze-logo.png"
+                  alt="Amaze Ayurveda"
+                  width={150}
+                  height={55}
+                  priority
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
             </div>
 
-            <p className="mt-5 text-[10px] text-white/35">
-              © {currentYear ?? "2026"} Amaze. All rights reserved.
-            </p>
-          </div>
-        </section>
-
-        {/* Registration section */}
-        <section className="flex min-h-0 flex-col overflow-hidden px-4 py-3 sm:px-7 lg:px-9 xl:px-12">
-          {/* Mobile logo */}
-          <div className="mb-2 flex shrink-0 justify-center lg:hidden">
-            <Link href={ROUTES.HOME}>
-              <Image
-                src="/amaze-logo.png"
-                alt="Amaze Ayurveda"
-                width={150}
-                height={55}
-                priority
-                className="h-9 w-auto object-contain"
-              />
-            </Link>
-          </div>
-
-          {/* Registration card content */}
-          <div className="flex min-h-0 flex-1 flex-col justify-center">
-            <div className="mx-auto max-h-full w-full max-w-[540px] overflow-y-auto px-0.5 py-1">
+            {/* Registration content - natural height */}
+            <div className="mx-auto w-full max-w-[540px]">
               <Suspense fallback={<RegisterFallback />}>
                 <RegisterFormContent />
               </Suspense>
 
               {/* Login link */}
-              <p className="mt-4 text-center text-xs text-[#7d887b]">
+              <p className="mt-5 text-center text-xs text-[#7d887b]">
                 Already have an account?{" "}
                 <Link
                   href={ROUTES.SIGN_IN}
@@ -418,8 +421,8 @@ export default function RegisterPage() {
                 </Link>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </main>
   );
