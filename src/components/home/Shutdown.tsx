@@ -16,18 +16,17 @@ export default function ShutdownPage() {
         <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-amber-100/50 blur-[120px] rounded-full" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="relative z-10 max-w-xl w-full"
       >
         <div className="bg-white border border-slate-200 rounded-[3rem] p-8 md:p-12 shadow-2xl shadow-slate-200/50 text-center">
-          
           {/* Icon Section */}
           <div className="mb-8 flex justify-center">
             <div className="h-20 w-20 bg-rose-50 rounded-[2rem] flex items-center justify-center text-rose-500 relative">
               <AlertTriangle size={40} />
-              <motion.div 
+              <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 2 }}
                 className="absolute inset-0 bg-rose-500/10 rounded-[2rem]"
@@ -39,7 +38,7 @@ export default function ShutdownPage() {
           <h1 className="text-4xl md:text-5xl font-[1000] tracking-tighter uppercase italic text-slate-900 leading-none mb-4">
             Portal <span className="text-rose-500">Offline.</span>
           </h1>
-          
+
           <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px] mb-8">
             Access has been temporarily restricted <br /> by the administrator.
           </p>
@@ -51,25 +50,27 @@ export default function ShutdownPage() {
             <p className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">
               Contact Owner for Support
             </p>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Button 
-                asChild
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="h-14 rounded-2xl border-slate-200 font-bold text-xs uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all group"
               >
                 <a href={`mailto:${ownerEmail}`}>
-                  <Mail size={16} className="mr-2 group-hover:scale-110 transition-transform" />
+                  <Mail
+                    size={16}
+                    className="mr-2 group-hover:scale-110 transition-transform"
+                  />
                   Email Admin
                 </a>
               </Button>
 
-              <Button 
-                asChild
-                className="h-14 rounded-2xl bg-emerald-600 text-white font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all group"
-              >
+              <Button className="h-14 rounded-2xl bg-emerald-600 text-white font-bold text-xs uppercase tracking-widest hover:bg-emerald-700 transition-all group">
                 <a href={`tel:${ownerPhone}`}>
-                  <Phone size={16} className="mr-2 group-hover:shake transition-transform" />
+                  <Phone
+                    size={16}
+                    className="mr-2 group-hover:shake transition-transform"
+                  />
                   Call Support
                 </a>
               </Button>
