@@ -306,7 +306,7 @@ export const AppHeader = () => {
         {/* Sidebar Bottom */}
         <div className="border-t border-[#e9e9df] p-5">
           <Link
-            href="/sign-in"
+            href={APP_LINKS.SIGN_IN}
             onClick={() => setSidebarOpen(false)}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1c3320] py-3.5 text-xs font-bold uppercase tracking-wider text-white"
           >
