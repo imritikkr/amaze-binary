@@ -1,0 +1,213 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  MEMBER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  APPROVED
+  REJECTED
+  RESUBMISSION_REQUIRED
+}
+
+enum ActivationStatus {
+  FREE
+  ACTIVE
+  INACTIVE
+}
+
+enum BinaryPosition {
+  LEFT
+  RIGHT
+}
+
+model User {
+  id               String           @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String           @unique // 9-digit unique public ID (e.g. 847291038)
+  name             String
+  mobile           String           @unique
+  email            String?          @unique
+  passwordHash     String
+  firebaseUid      String?          @unique
+  phoneVerified    Boolean          @default(false)
+  emailVerified    Boolean          @default(false)
+  role             Role             @default(MEMBER)
+  accountStatus    AccountStatus    @default(ACTIVE)
+  kycStatus        KycStatus        @default(NOT_SUBMITTED)
+  activationStatus ActivationStatus @default(FREE)
+
+  // Direct Sponsor Relationship (Unilevel Lineage)
+  sponsorId        String? @db.ObjectId
+  sponsor          User?   @relation("DirectReferrals", fields: [sponsorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sponsoredMembers User[]  @relation("DirectReferrals")
+
+  // Structural Binary Node References
+  binaryNode      BinaryPlacement?  @relation("MemberNode")
+  childPlacements BinaryPlacement[] @relation("PlacementChildren")
+
+  // Auth, Tokens & Audit Relations
+  sessions        AuthSession[]
+  loginHistories  LoginHistory[]
+  kycRecord       Kyc?
+  kycReviewsGiven KycReviewHistory[] @relation("AdminKycReviews")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sponsorId])
+  @@index([accountStatus])
+  @@index([createdAt])
+}
+
+model BinaryPlacement {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @unique @db.ObjectId
+  user   User   @relation("MemberNode", fields: [userId], references: [id], onDelete: Cascade)
+
+  parentId String? @db.ObjectId
+  parent   User?   @relation("PlacementChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  position BinaryPosition // LEFT or RIGHT under the immediate parent
+  treePath String // Breadcrumb materialized path for tree lookups: e.g. "rootId/nodeA/nodeB"
+  depth    Int            @default(0)
+
+  createdAt DateTime @default(now())
+
+  // Critical Database constraint preventing duplicate children on the same node leg
+  @@unique([parentId, position])
+  @@index([treePath])
+  @@index([parentId])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String // Email address
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([identifier])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String    @db.ObjectId
+  tokenHash  String    @unique // SHA-256 hash of the single-use reset auth token
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthSession {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionTokenHash String   @unique // SHA-256 hash of the random session token
+  userId           String   @db.ObjectId
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent        String?
+  ipAddress        String?
+  deviceInfo       String? // Parsed browser/OS summary
+  lastActiveAt     DateTime @default(now())
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginHistory {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress String?
+  userAgent String?
+  status    String // SUCCESS | FAILED
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Kyc {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  userId String @unique @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName       String
+  fatherOrSpouse String
+  dob            DateTime
+  address        String
+  state          String
+  district       String
+  pincode        String
+
+  documents     KycDocument[]
+  reviewHistory KycReviewHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model KycDocument {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  kycId String @db.ObjectId
+  kyc   Kyc    @relation(fields: [kycId], references: [id], onDelete: Cascade)
+
+  documentType String // AADHAAR_FRONT | AADHAAR_BACK | PAN_CARD | PROFILE_IMAGE
+  storagePath  String // Private object storage key / encrypted ref
+  fileSize     Int
+  mimeType     String
+  uploadedAt   DateTime @default(now())
+
+  @@index([kycId])
+}
+
+model KycReviewHistory {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  kycId String @db.ObjectId
+  kyc   Kyc    @relation(fields: [kycId], references: [id], onDelete: Cascade)
+
+  adminId String @db.ObjectId
+  admin   User   @relation("AdminKycReviews", fields: [adminId], references: [id])
+
+  status     KycStatus
+  remarks    String?
+  reviewedAt DateTime  @default(now())
+
+  @@index([kycId])
+}
+
+model RegistrationIdempotency {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  idempotencyKey String   @unique
+  firebaseUid    String   @unique
+  completedAt    DateTime @default(now())
+}
