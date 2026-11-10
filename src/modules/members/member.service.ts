@@ -1,39 +1,23 @@
 // src/modules/members/member.service.ts
 import { prisma } from "@/lib/prisma";
-import { adminAuth } from "@/lib/firebase/admin";
 import { hashPassword, generateNineDigitUserId } from "@/lib/security/crypto";
 import { findLowestAvailablePlacement } from "@/modules/binary/placement.service";
 import { MemberRegisterApiInput } from "@/modules/validators/auth.schema";
-import { resend } from "@/lib/resend/client";
+import { sendEmailVerificationLink } from "@/lib/resend/verification";
+import { BinaryPosition } from "@/types/binary";
 
 export async function registerNewMember(data: MemberRegisterApiInput) {
-  // 1. Backend-only verification of Firebase ID Token
-  let decodedToken;
-  try {
-    decodedToken = await adminAuth.verifyIdToken(data.firebaseIdToken);
-  } catch (err: any) {
-    throw new Error("Invalid or expired mobile verification token");
-  }
+  const sanitizedEmail =
+    data.email && data.email.trim() !== ""
+      ? data.email.trim().toLowerCase()
+      : null;
 
-  const tokenPhone = decodedToken.phone_number?.replace(/\D/g, ""); // e.g. 919999999999
-  const inputPhone = data.mobile.replace(/\D/g, "");
-
-  // Prevent token replay / identity spoofing
-  if (!tokenPhone || !tokenPhone.endsWith(inputPhone)) {
-    throw new Error(
-      "Verified mobile number does not match registration mobile number",
-    );
-  }
-
-  const firebaseUid = decodedToken.uid;
-
-  // 2. Prevent replay attacks or duplicate phone/Firebase accounts
+  // 1. Check for duplicate mobile or email
   const existingUser = await prisma.user.findFirst({
     where: {
       OR: [
         { mobile: data.mobile },
-        { firebaseUid: firebaseUid },
-        ...(data.email ? [{ email: data.email }] : []),
+        ...(sanitizedEmail ? [{ email: sanitizedEmail }] : []),
       ],
     },
   });
@@ -44,15 +28,14 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
         "An account is already registered with this mobile number",
       );
     }
-    if (data.email && existingUser.email === data.email) {
+    if (sanitizedEmail && existingUser.email === sanitizedEmail) {
       throw new Error(
         "An account is already registered with this email address",
       );
     }
-    throw new Error("This verified identity is already linked to an account");
   }
 
-  // 3. Verify Sponsor Eligibility
+  // 2. Validate Sponsor & Binary Placement
   const sponsor = await prisma.user.findUnique({
     where: { userId: data.sponsorId },
     select: { id: true, userId: true, accountStatus: true },
@@ -62,13 +45,29 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
     throw new Error("Invalid or inactive sponsor account");
   }
 
-  // 4. Resolve Deterministic Binary Placement Slot
+  // Ensure root binary node exists for sponsor
+  let sponsorNode = await prisma.binaryPlacement.findUnique({
+    where: { userId: sponsor.id },
+  });
+
+  if (!sponsorNode) {
+    sponsorNode = await prisma.binaryPlacement.create({
+      data: {
+        userId: sponsor.id,
+        position: BinaryPosition.LEFT,
+        treePath: sponsor.id,
+        depth: 0,
+      },
+    });
+  }
+
+  // Find lowest available spot in chosen leg
   const targetPlacement = await findLowestAvailablePlacement(
     sponsor.id,
     data.placement,
   );
 
-  // 5. Generate secure 9-digit member User ID
+  // 3. Generate unique 9-digit member User ID
   let assignedUserId = "";
   let isUnique = false;
   let attempts = 0;
@@ -87,24 +86,21 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
   }
 
   if (!assignedUserId) {
-    throw new Error("Failed to allocate a unique User ID. Please try again.");
+    throw new Error("Failed to allocate a unique Member ID. Please try again.");
   }
 
-  // 6. Hash Password securely using Argon2id
   const hashedPassword = await hashPassword(data.password);
 
-  // 7. Atomic Member Creation & Placement Reservation Transaction
-  const createdMember = await prisma.$transaction(async (tx) => {
-    // A. Create User document
-    const user = await tx.user.create({
+  // 4. Persistence operation
+  const createOperations = async (client: any) => {
+    const user = await client.user.create({
       data: {
         userId: assignedUserId,
         name: data.fullName,
         mobile: data.mobile,
-        email: data.email || null,
+        email: sanitizedEmail,
         passwordHash: hashedPassword,
-        firebaseUid: firebaseUid,
-        phoneVerified: true,
+        phoneVerified: false, // Verified later in dashboard/profile
         emailVerified: false,
         sponsorId: sponsor.id,
         role: "MEMBER",
@@ -114,8 +110,7 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
       },
     });
 
-    // B. Create Binary Placement Node (Enforces @@unique([parentId, position]))
-    await tx.binaryPlacement.create({
+    await client.binaryPlacement.create({
       data: {
         userId: user.id,
         parentId: targetPlacement.parentId,
@@ -125,40 +120,29 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
       },
     });
 
-    // C. Record Idempotency Key
-    await tx.registrationIdempotency.create({
-      data: {
-        idempotencyKey: `REG_${firebaseUid}_${Date.now()}`,
-        firebaseUid: firebaseUid,
-      },
-    });
-
     return user;
-  });
+  };
 
-  // 8. Dispatch Welcome Email via Resend if email was provided
-  if (data.email) {
-    try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || "Amaze <noreply@amazemlm.in>",
-        to: data.email,
-        subject: "Welcome to Amaze MLM - Your Account Details",
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #7c3aed;">Welcome to Amaze, ${createdMember.name}!</h2>
-            <p>Your member account has been registered successfully.</p>
-            <div style="background: #f4f4f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p><strong>Member User ID:</strong> ${createdMember.userId}</p>
-              <p><strong>Mobile Number:</strong> +91 ${createdMember.mobile}</p>
-              <p><strong>Referral Link:</strong> ${process.env.NEXT_PUBLIC_APP_URL}/register?sponsor=${createdMember.userId}</p>
-            </div>
-            <p>Please log in to your dashboard to complete your KYC and explore your binary tree.</p>
-          </div>
-        `,
-      });
-    } catch (emailErr) {
-      console.warn("Welcome email dispatch failed (non-blocking):", emailErr);
+  let createdMember;
+  try {
+    createdMember = await prisma.$transaction(async (tx) => {
+      return await createOperations(tx);
+    });
+  } catch (txError: any) {
+    if (txError.message?.includes("Transactions are not supported")) {
+      createdMember = await createOperations(prisma);
+    } else {
+      throw txError;
     }
+  }
+
+  // 5. Send verification email via Resend if email was provided
+  if (sanitizedEmail) {
+    sendEmailVerificationLink(sanitizedEmail, createdMember.name).catch(
+      (err) => {
+        console.warn("Email verification link dispatch failed:", err);
+      },
+    );
   }
 
   return {

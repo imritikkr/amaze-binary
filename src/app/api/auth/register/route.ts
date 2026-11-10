@@ -9,9 +9,12 @@ export async function POST(req: NextRequest) {
 
     const parseResult = memberRegisterApiSchema.safeParse(body);
     if (!parseResult.success) {
-      const issue = parseResult.error.issues[0];
+      const firstIssue = parseResult.error.issues[0];
       return NextResponse.json(
-        { success: false, message: issue?.message || "Invalid input data" },
+        {
+          success: false,
+          message: firstIssue?.message || "Invalid registration data",
+        },
         { status: 400 },
       );
     }
@@ -27,25 +30,30 @@ export async function POST(req: NextRequest) {
       { status: 201 },
     );
   } catch (err: any) {
-    console.error("Member Registration Error:", err);
+    console.error("CRITICAL: Member Registration API Error ->", err);
 
-    // MongoDB / Prisma race condition duplicate error check
+    // Prisma Unique Constraint Conflict
     if (err.code === "P2002") {
+      const target = Array.isArray(err.meta?.target)
+        ? err.meta.target.join(", ")
+        : "field";
       return NextResponse.json(
         {
           success: false,
-          message: "Placement slot collision detected. Please submit again.",
+          message: `A record with this ${target} already exists or the placement slot is taken.`,
         },
         { status: 409 },
       );
     }
 
+    // Return the exact error message as JSON
     return NextResponse.json(
       {
         success: false,
-        message: err.message || "Failed to complete member registration",
+        message:
+          err?.message || "An unexpected error occurred during registration.",
       },
-      { status: 400 },
+      { status: 500 },
     );
   }
 }

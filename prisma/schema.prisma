@@ -51,10 +51,13 @@ model User {
   id               String           @id @default(auto()) @map("_id") @db.ObjectId
   userId           String           @unique // 9-digit unique public ID (e.g. 847291038)
   name             String
+  fatherName       String?
+  gender           Gender?
+  dateOfBirth      DateTime?
   mobile           String           @unique
   email            String?          @unique
   passwordHash     String
-  firebaseUid      String?          @unique
+  firebaseUid      String?
   phoneVerified    Boolean          @default(false)
   emailVerified    Boolean          @default(false)
   role             Role             @default(MEMBER)
@@ -77,12 +80,40 @@ model User {
   kycRecord       Kyc?
   kycReviewsGiven KycReviewHistory[] @relation("AdminKycReviews")
 
+  // Embedded Profile Details
+  address     ProfileAddress?
+  bankDetails BankDetails?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([sponsorId])
   @@index([accountStatus])
   @@index([createdAt])
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+type ProfileAddress {
+  addressLine String?
+  district    String?
+  state       String?
+  pinCode     String?
+  country     String? @default("India")
+}
+
+type BankDetails {
+  accountHolderName String?
+  bankName          String?
+  accountNumber     String? // Stored encrypted/plain server-side, masked on output
+  ifscCode          String?
+  branchName        String?
+  isVerified        Boolean   @default(false)
+  updatedAt         DateTime?
 }
 
 model BinaryPlacement {

@@ -25,7 +25,6 @@ import { BinaryPosition } from "@/types/binary";
 import { RegisterStepper } from "@/components/auth/RegisterStepper";
 import { RegisterStepOne } from "@/components/auth/RegisterStepOne";
 import { RegisterStepTwo } from "@/components/auth/RegisterStepTwo";
-import { RegisterStepThreeOtp } from "@/components/auth/RegisterStepThreeOtp";
 
 import { ROUTES } from "@/constants/links";
 
@@ -33,7 +32,7 @@ function RegisterFormContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [submittingRegistration, setSubmittingRegistration] = useState(false);
 
   const form = useForm<FullRegistrationInput>({
@@ -96,15 +95,20 @@ function RegisterFormContent() {
     return () => controller.abort();
   }, [searchParams, form]);
 
-  // Complete registration after OTP verification
-  const handleOtpVerified = async (firebaseIdToken: string) => {
+  // Complete direct registration without upfront OTP barrier
+  const handleFinalSubmit = async () => {
+    const isValid = await form.trigger();
+    if (!isValid) {
+      toast.error("Please fill all required fields correctly.");
+      return;
+    }
+
     setSubmittingRegistration(true);
 
     try {
       const formData = form.getValues();
 
       const payload = {
-        firebaseIdToken,
         sponsorId: formData.sponsorId,
         placement: formData.placement,
         fullName: formData.fullName,
@@ -180,7 +184,7 @@ function RegisterFormContent() {
         <div className="mb-3 flex justify-center">
           <span className="inline-flex items-center gap-2 rounded-full border border-[#1c3324]/10 bg-[#f3f5ef] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.18em] text-[#55784c]">
             <ShieldCheck size={13} />
-            Secure Registration
+            Direct Member Registration
           </span>
         </div>
 
@@ -205,25 +209,17 @@ function RegisterFormContent() {
         )}
 
         {step === 2 && (
-          <RegisterStepTwo
-            form={form}
-            onBack={() => setStep(1)}
-            onProceedToOtp={() => setStep(3)}
-          />
-        )}
-
-        {step === 3 && (
           <div className="space-y-3">
-            <RegisterStepThreeOtp
-              mobile={form.watch("mobile")}
-              onSuccess={handleOtpVerified}
-              onBack={() => setStep(2)}
+            <RegisterStepTwo
+              form={form}
+              onBack={() => setStep(1)}
+              onProceedToOtp={handleFinalSubmit}
             />
 
             {submittingRegistration && (
               <div className="flex items-center justify-center gap-2 rounded-xl bg-[#edf2e9] p-3 text-xs font-medium text-[#315b37]">
                 <Loader2 size={15} className="animate-spin" />
-                Completing your registration...
+                Creating your account & reserving placement...
               </div>
             )}
           </div>
@@ -234,8 +230,8 @@ function RegisterFormContent() {
       <div className="flex items-start gap-2.5 rounded-xl border border-[#e9ece4] bg-[#fafbf8] p-3">
         <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#55784c]" />
         <p className="text-[10px] leading-4 text-[#7d887b]">
-          Your registration information is processed securely. Please make sure
-          your mobile number is correct for OTP verification.
+          Your account will be created immediately. Phone and email verification
+          can be completed directly from your member dashboard.
         </p>
       </div>
     </div>
@@ -320,7 +316,7 @@ export default function RegisterPage() {
                 <div className="mt-8 space-y-4">
                   {[
                     "Simple guided registration",
-                    "Mobile OTP verification",
+                    "Immediate member account activation",
                     "Access to the Amaze community",
                   ].map((item) => (
                     <div key={item} className="flex items-center gap-3">
@@ -343,7 +339,7 @@ export default function RegisterPage() {
                   <ShieldCheck className="mb-3 h-5 w-5 text-[#e8a020]" />
                   <p className="text-xs font-semibold">Secure signup</p>
                   <p className="mt-1 text-[10px] leading-4 text-white/50">
-                    Mobile verification for your account.
+                    Fast, secure account creation.
                   </p>
                 </div>
 
@@ -378,7 +374,7 @@ export default function RegisterPage() {
               </Link>
             </div>
 
-            {/* Registration content - natural height */}
+            {/* Registration content */}
             <div className="mx-auto w-full max-w-[540px]">
               <Suspense fallback={<RegisterFallback />}>
                 <RegisterFormContent />

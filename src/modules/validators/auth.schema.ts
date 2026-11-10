@@ -3,9 +3,7 @@ import { z } from "zod";
 import { BinaryPosition } from "@/types/binary";
 
 export const memberRegisterApiSchema = z.object({
-  firebaseIdToken: z.string().min(1, "Firebase verification token is required"),
-
-  sponsorId: z
+    sponsorId: z
     .string()
     .length(9, "Sponsor ID must be exactly 9 digits")
     .regex(/^[1-9][0-9]{8}$/, "Sponsor ID cannot start with zero"),

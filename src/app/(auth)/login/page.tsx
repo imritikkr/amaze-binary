@@ -77,7 +77,7 @@ export default function LoginPage() {
         ) {
           router.replace("/admin/members");
         } else {
-          router.replace("/dashboard/profile");
+          router.replace("/dashboard");
         }
 
         return;
