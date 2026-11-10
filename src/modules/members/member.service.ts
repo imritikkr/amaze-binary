@@ -1,10 +1,12 @@
 // src/modules/members/member.service.ts
 import { prisma } from "@/lib/prisma";
 import { hashPassword, generateNineDigitUserId } from "@/lib/security/crypto";
-import { findLowestAvailablePlacement } from "@/modules/binary/placement.service";
+import {
+  findLowestAvailablePlacement,
+  updateAncestorLegCounts,
+} from "@/modules/binary/placement.service";
 import { MemberRegisterApiInput } from "@/modules/validators/auth.schema";
 import { sendEmailVerificationLink } from "@/lib/resend/verification";
-import { BinaryPosition } from "@/types/binary";
 
 export async function registerNewMember(data: MemberRegisterApiInput) {
   const sanitizedEmail =
@@ -19,6 +21,11 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
         { mobile: data.mobile },
         ...(sanitizedEmail ? [{ email: sanitizedEmail }] : []),
       ],
+    },
+    select: {
+      id: true,
+      mobile: true,
+      email: true,
     },
   });
 
@@ -35,7 +42,7 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
     }
   }
 
-  // 2. Validate Sponsor & Binary Placement
+  // 2. Validate Referral Sponsor (Unilevel relationship)
   const sponsor = await prisma.user.findUnique({
     where: { userId: data.sponsorId },
     select: { id: true, userId: true, accountStatus: true },
@@ -45,29 +52,13 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
     throw new Error("Invalid or inactive sponsor account");
   }
 
-  // Ensure root binary node exists for sponsor
-  let sponsorNode = await prisma.binaryPlacement.findUnique({
-    where: { userId: sponsor.id },
-  });
-
-  if (!sponsorNode) {
-    sponsorNode = await prisma.binaryPlacement.create({
-      data: {
-        userId: sponsor.id,
-        position: BinaryPosition.LEFT,
-        treePath: sponsor.id,
-        depth: 0,
-      },
-    });
-  }
-
-  // Find lowest available spot in chosen leg
+  // 3. Find lowest available spot in the chosen binary leg
   const targetPlacement = await findLowestAvailablePlacement(
     sponsor.id,
     data.placement,
   );
 
-  // 3. Generate unique 9-digit member User ID
+  // 4. Generate unique 9-digit member User ID
   let assignedUserId = "";
   let isUnique = false;
   let attempts = 0;
@@ -91,16 +82,16 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
 
   const hashedPassword = await hashPassword(data.password);
 
-  // 4. Persistence operation
+  // 5. Persistence operation (User + BinaryPlacement)
   const createOperations = async (client: any) => {
     const user = await client.user.create({
       data: {
         userId: assignedUserId,
         name: data.fullName,
         mobile: data.mobile,
-        email: sanitizedEmail,
+        ...(sanitizedEmail ? { email: sanitizedEmail } : {}),
         passwordHash: hashedPassword,
-        phoneVerified: false, // Verified later in dashboard/profile
+        phoneVerified: false,
         emailVerified: false,
         sponsorId: sponsor.id,
         role: "MEMBER",
@@ -110,37 +101,49 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
       },
     });
 
-    await client.binaryPlacement.create({
+    const placement = await client.binaryPlacement.create({
       data: {
         userId: user.id,
         parentId: targetPlacement.parentId,
         position: targetPlacement.position,
         treePath: `${targetPlacement.treePath}/${user.id}`,
         depth: targetPlacement.depth,
+        leftCount: 0,
+        rightCount: 0,
+        leftBv: 0,
+        rightBv: 0,
       },
     });
 
-    return user;
+    return { user, placement };
   };
 
-  let createdMember;
+  let result: { user: any; placement: any };
+
   try {
-    createdMember = await prisma.$transaction(async (tx) => {
+    result = await prisma.$transaction(async (tx) => {
       return await createOperations(tx);
     });
   } catch (txError: any) {
     if (txError.message?.includes("Transactions are not supported")) {
-      createdMember = await createOperations(prisma);
+      result = await createOperations(prisma);
     } else {
       throw txError;
     }
   }
 
-  // 5. Send verification email via Resend if email was provided
+  const { user: createdMember, placement: createdPlacement } = result;
+
+  // 6. Propagate leg count increment up the ancestor path (non-blocking)
+  updateAncestorLegCounts(createdPlacement.id).catch((err: unknown) => {
+    console.warn("Ancestor leg count propagation failed (non-blocking):", err);
+  });
+
+  // 7. Dispatch verification email via Resend if email was provided
   if (sanitizedEmail) {
     sendEmailVerificationLink(sanitizedEmail, createdMember.name).catch(
-      (err) => {
-        console.warn("Email verification link dispatch failed:", err);
+      (emailErr: unknown) => {
+        console.warn("Email verification link dispatch failed:", emailErr);
       },
     );
   }

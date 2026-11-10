@@ -9,11 +9,11 @@ export async function POST(req: NextRequest) {
 
     const parseResult = memberRegisterApiSchema.safeParse(body);
     if (!parseResult.success) {
-      const firstIssue = parseResult.error.issues[0];
       return NextResponse.json(
         {
           success: false,
-          message: firstIssue?.message || "Invalid registration data",
+          message:
+            parseResult.error.issues[0]?.message || "Invalid registration data",
         },
         { status: 400 },
       );
@@ -32,21 +32,54 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("CRITICAL: Member Registration API Error ->", err);
 
-    // Prisma Unique Constraint Conflict
     if (err.code === "P2002") {
-      const target = Array.isArray(err.meta?.target)
-        ? err.meta.target.join(", ")
-        : "field";
+      const target = err.meta?.target;
+      const targetStr = Array.isArray(target)
+        ? target.join(", ")
+        : String(target || "field");
+
+      // Give specific, actionable messages
+      if (targetStr.includes("mobile")) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "This mobile number is already registered.",
+          },
+          { status: 409 },
+        );
+      }
+      if (targetStr.includes("email")) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "This email address is already registered.",
+          },
+          { status: 409 },
+        );
+      }
+      if (
+        targetStr.includes("parentId_position") ||
+        targetStr.includes("BinaryPlacement")
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "Placement slot collision. Retrying placement calculation.",
+          },
+          { status: 409 },
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          message: `A record with this ${target} already exists or the placement slot is taken.`,
+          message: `Unique constraint violated on: ${targetStr}`,
         },
         { status: 409 },
       );
     }
 
-    // Return the exact error message as JSON
     return NextResponse.json(
       {
         success: false,

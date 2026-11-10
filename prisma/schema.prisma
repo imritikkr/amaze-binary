@@ -51,11 +51,12 @@ model User {
   id               String           @id @default(auto()) @map("_id") @db.ObjectId
   userId           String           @unique // 9-digit unique public ID (e.g. 847291038)
   name             String
+  avatarUrl        String?
   fatherName       String?
   gender           Gender?
   dateOfBirth      DateTime?
   mobile           String           @unique
-  email            String?          @unique
+  email            String?
   passwordHash     String
   firebaseUid      String?
   phoneVerified    Boolean          @default(false)
@@ -70,9 +71,8 @@ model User {
   sponsor          User?   @relation("DirectReferrals", fields: [sponsorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sponsoredMembers User[]  @relation("DirectReferrals")
 
+  binaryPlacement BinaryPlacement? @relation("UserBinaryPlacement")
   // Structural Binary Node References
-  binaryNode      BinaryPlacement?  @relation("MemberNode")
-  childPlacements BinaryPlacement[] @relation("PlacementChildren")
 
   // Auth, Tokens & Audit Relations
   sessions        AuthSession[]
@@ -119,21 +119,75 @@ type BankDetails {
 model BinaryPlacement {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   userId String @unique @db.ObjectId
-  user   User   @relation("MemberNode", fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation("UserBinaryPlacement", fields: [userId], references: [id], onDelete: Cascade)
 
-  parentId String? @db.ObjectId
-  parent   User?   @relation("PlacementChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parentId String?           @db.ObjectId
+  parent   BinaryPlacement?  @relation("BinaryHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children BinaryPlacement[] @relation("BinaryHierarchy")
 
-  position BinaryPosition // LEFT or RIGHT under the immediate parent
-  treePath String // Breadcrumb materialized path for tree lookups: e.g. "rootId/nodeA/nodeB"
+  position BinaryPosition // LEFT | RIGHT
+  treePath String // Slash-delimited ObjectId chain: "/rootId/.../parentId/userId"
   depth    Int            @default(0)
 
-  createdAt DateTime @default(now())
+  // Cached aggregate counters to prevent full-tree recalculations on every dashboard load
+  leftCount  Int   @default(0)
+  rightCount Int   @default(0)
+  leftBv     Float @default(0)
+  rightBv    Float @default(0)
 
-  // Critical Database constraint preventing duplicate children on the same node leg
-  @@unique([parentId, position])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @default(now()) @updatedAt
+
+  @@unique([parentId, position]) // Guarantees only one LEFT and one RIGHT child per parent node
   @@index([treePath])
   @@index([parentId])
+  @@index([depth])
+}
+
+// model BinaryPlacement {
+//   id     String @id @default(auto()) @map("_id") @db.ObjectId
+//   userId String @unique @db.ObjectId
+//   user   User   @relation("MemberNode", fields: [userId], references: [id], onDelete: Cascade)
+
+//   parentId String? @db.ObjectId
+//   parent   User?   @relation("PlacementChildren", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+//   position BinaryPosition // LEFT or RIGHT under the immediate parent
+//   treePath String // Breadcrumb materialized path for tree lookups: e.g. "rootId/nodeA/nodeB"
+//   depth    Int            @default(0)
+
+//   createdAt DateTime @default(now())
+
+//   // Critical Database constraint preventing duplicate children on the same node leg
+//   @@unique([parentId, position])
+//   @@index([treePath])
+//   @@index([parentId])
+// }
+model BinaryPlacementHistory {
+  id          String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String         @db.ObjectId
+  oldParentId String?        @db.ObjectId
+  newParentId String         @db.ObjectId
+  position    BinaryPosition
+  reason      String // "INITIAL_REGISTRATION", "ADMIN_CORRECTION", "SPILLOVER"
+  performedBy String?        @db.ObjectId // Admin user ID or "SYSTEM"
+  createdAt   DateTime       @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// 3. New Model: BinaryLegStatsHistory (Periodic/Daily snapshots for matching calculations)
+model BinaryLegSnapshot {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  date       DateTime @default(now())
+  leftCount  Int
+  rightCount Int
+  leftBv     Float
+  rightBv    Float
+
+  @@index([userId, date])
 }
 
 model EmailVerificationToken {
