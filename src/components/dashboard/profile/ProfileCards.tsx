@@ -221,7 +221,7 @@ export function PersonalInfoCard({ member }: { member: MemberProfile }) {
           <CardHeader
             icon={UserRound}
             eyebrow="Member profile"
-            title="Personal information"
+            title="Personal informations"
             description="Your basic identity and contact information."
             number="01"
           />
