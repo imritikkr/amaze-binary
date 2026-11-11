@@ -101,9 +101,9 @@ export default function ChangePasswordPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-[#f7f8f5] px-4 py-5 pb-28 font-sora sm:px-6">
+    <main className="min-h-screen bg-[#f7f8f5] px-1  pb-28 font-sora sm:px-2">
       <div className="mx-auto max-w-xl space-y-5">
-        {/* Header */}
+        {/* Header
         <section className="flex items-center gap-3">
           <button
             type="button"
@@ -122,25 +122,7 @@ export default function ChangePasswordPage() {
               Update your account login password.
             </p>
           </div>
-        </section>
-
-        {/* Security Banner */}
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1c3324] to-[#385c3b] p-5 text-white">
-          <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/5" />
-
-          <div className="relative flex items-center gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              <ShieldCheck size={25} />
-            </div>
-
-            <div>
-              <h2 className="text-sm font-bold">Keep your account secure</h2>
-              <p className="mt-1 text-[11px] leading-5 text-[#d6e4d2]">
-                Choose a strong password that you do not use on other websites.
-              </p>
-            </div>
-          </div>
-        </section>
+        </section> */}
 
         {/* Password Form */}
         <form

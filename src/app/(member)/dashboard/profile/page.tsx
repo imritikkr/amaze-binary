@@ -123,12 +123,12 @@ const preferenceItems: MenuItem[] = [
     icon: ShoppingBag,
     href: "/dashboard/orders",
   },
-  {
-    label: "Login History",
-    description: "Review your account activity",
-    icon: Smartphone,
-    href: "/dashboard/login-history",
-  },
+  // {
+  //   label: "Login History",
+  //   description: "Review your account activity",
+  //   icon: Smartphone,
+  //   href: "/dashboard/login-history",
+  // },
   {
     label: "Help & Support",
     description: "Get assistance with your account",
