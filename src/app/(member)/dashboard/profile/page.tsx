@@ -230,7 +230,7 @@ function ServiceTile({
   color = "green",
 }: {
   label: string;
-  description: string;
+  description?: string;
   icon: React.ElementType;
   href: string;
   color?: "green" | "gold" | "blue";
@@ -244,7 +244,7 @@ function ServiceTile({
   return (
     <Link
       href={href}
-      className="group flex min-h-[132px] flex-col justify-between rounded-2xl border border-[#eff1ed] bg-white p-4 shadow-[0_4px_16px_rgba(28,51,36,0.045)] transition duration-200 hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+      className="group flex min-h-[96px] flex-col justify-between rounded-2xl border border-[#eff1ed] bg-white p-4 shadow-[0_4px_16px_rgba(28,51,36,0.045)] transition duration-200 hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
     >
       <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f1f6ed]">
         <span
@@ -258,9 +258,9 @@ function ServiceTile({
         <p className="text-xs font-bold leading-tight text-[#263329]">
           {label}
         </p>
-        <p className="mt-1 text-[10px] leading-4 text-[#7c887b]">
-          {description}
-        </p>
+        {description && (
+          <p className="mt-1 text-[10px] text-gray-400">{description}</p>
+        )}
       </div>
     </Link>
   );
@@ -357,7 +357,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f7f8f5] px-3 pb-8 pt-4 font-sora sm:px-6 sm:py-7">
+    <main className="min-h-screen bg-[#f7f8f5] px-1 pb-8 font-sora sm:px-6 sm:py-7">
       <div className="mx-auto max-w-3xl space-y-6">
         {/* Profile Header */}
         <ProfileHeader member={member} />
@@ -369,30 +369,23 @@ export default function ProfilePage() {
             description="Your account at a glance"
           />
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <ServiceTile
-              label="Personal Details"
-              description="Your profile information"
-              icon={UserRound}
-              href="/dashboard/profile/personal"
-            />
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4">
             <ServiceTile
               label="My Network"
-              description="Your team and referrals"
               icon={Network}
               href="/dashboard/network"
               color="gold"
             />
+
             <ServiceTile
               label="My Wallet"
-              description="Balance and payouts"
               icon={Wallet}
               href="/dashboard/wallet"
               color="blue"
             />
+
             <ServiceTile
               label="My Orders"
-              description="Your shopping history"
               icon={ShoppingBag}
               href="/dashboard/orders"
             />

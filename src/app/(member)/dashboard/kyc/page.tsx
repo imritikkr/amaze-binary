@@ -399,52 +399,6 @@ export default function KycPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 pb-24">
-      {/* PAGE HEADER */}
-
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#eaf0e6]">
-            <ShieldCheck className="h-6 w-6 text-[#315b37]" />
-          </div>
-
-          <div>
-            <h1 className="text-xl font-bold text-[#1c3324]">
-              KYC Verification
-            </h1>
-
-            <p className="text-xs text-gray-500">
-              Complete your identity verification
-            </p>
-          </div>
-        </div>
-
-        <div
-          className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold ${status.bg} ${status.color}`}
-        >
-          <StatusIcon className="h-4 w-4" />
-          {status.label}
-        </div>
-      </div>
-
-      {/* SECURITY NOTICE */}
-
-      <div className="flex gap-3 rounded-xl border border-[#dce8d8] bg-[#f5f8f1] p-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#e5eddf]">
-          <LockKeyhole className="h-5 w-5 text-[#315b37]" />
-        </div>
-
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-[#1c3324]">
-            Your information is protected
-          </p>
-
-          <p className="mt-1 text-xs leading-5 text-gray-600">
-            Please provide accurate details matching your identity documents.
-            Your information will be used for identity verification.
-          </p>
-        </div>
-      </div>
-
       {/* ADMIN REVIEW REMARKS */}
 
       {latestReview?.remarks && (
