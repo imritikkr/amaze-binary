@@ -25,7 +25,7 @@ const pageTitles: Record<string, string> = {
   "/dashboard/login-history": "Login History",
   "/dashboard/notifications": "Notifications",
   "/dashboard/orders": "My Orders",
-  "/dashboard/wallet": "My Wallet",
+  "/dashboard/wallet": "Amaze Wallet",
   "/dashboard/network": "My Network",
   "/dashboard/referrals": "My Referrals",
   "/dashboard/rewards": "Rewards & Achievements",

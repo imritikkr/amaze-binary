@@ -90,12 +90,12 @@ const businessItems: MenuItem[] = [
     icon: Link2,
     href: "/dashboard/referrals",
   },
-  {
-    label: "My Wallet",
-    description: "Balance and transactions",
-    icon: Wallet,
-    href: "/dashboard/wallet",
-  },
+  // {
+  //   label: "Amaze Wallet",
+  //   description: "Balance and transactions",
+  //   icon: Wallet,
+  //   href: "/dashboard/wallet",
+  // },
   {
     label: "Rewards & Achievements",
     description: "View your rewards and ranks",
@@ -378,7 +378,7 @@ export default function ProfilePage() {
             />
 
             <ServiceTile
-              label="My Wallet"
+              label="Amaze Wallet"
               icon={Wallet}
               href="/dashboard/wallet"
               color="blue"
