@@ -241,6 +241,7 @@ model LoginHistory {
   browser         String?
   operatingSystem String?
   status          String  @default("SUCCESS")
+  reason          String?
 
   createdAt DateTime @default(now())
 
