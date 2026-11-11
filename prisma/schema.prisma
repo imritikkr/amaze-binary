@@ -214,16 +214,17 @@ model PasswordResetToken {
 }
 
 model AuthSession {
-  id               String   @id @default(auto()) @map("_id") @db.ObjectId
-  sessionTokenHash String   @unique // SHA-256 hash of the random session token
-  userId           String   @db.ObjectId
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  sessionTokenHash String    @unique // SHA-256 hash of the random session token
+  userId           String    @db.ObjectId
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userAgent        String?
   ipAddress        String?
   deviceInfo       String? // Parsed browser/OS summary
-  lastActiveAt     DateTime @default(now())
+  lastActiveAt     DateTime  @default(now())
   expiresAt        DateTime
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  revokedAt        DateTime?
 
   @@index([userId])
   @@index([expiresAt])
