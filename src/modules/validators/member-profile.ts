@@ -23,16 +23,28 @@ export const profileUpdateSchema = z.object({
 
   dateOfBirth: z
     .string()
-    .min(1, "Date of birth is required")
+    .optional()
     .refine((value) => {
-      const date = new Date(`${value}T00:00:00`);
+      if (!value) return true;
+
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+      if (!match) return false;
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+
+      const date = new Date(year, month - 1, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
       return (
-        !Number.isNaN(date.getTime()) &&
-        date.toISOString().slice(0, 10) === value &&
-        date <= new Date()
+        date.getFullYear() === year &&
+        date.getMonth() === month - 1 &&
+        date.getDate() === day &&
+        date <= today
       );
     }, "Please enter a valid date of birth"),
-
   gender: z.enum(["MALE", "FEMALE", "OTHER"], {
     message: "Please select a valid gender",
   }),
