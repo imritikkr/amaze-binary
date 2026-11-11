@@ -1,260 +1,370 @@
+// src/components/home/Hero.tsx
+
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
-import { ShoppingBag, ArrowRight, Leaf, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
 import Image from "next/image";
-import { Button } from "../ui/button";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  ShoppingBag,
+  Users,
+  Leaf,
+  Sparkles,
+  ShieldCheck,
+  ChevronRight,
+  Sprout,
+  TrendingUp,
+} from "lucide-react";
 
-/* ── Shared botanical leaf SVG ── */
-const LeafDecor = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 120 180" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M60 170 C60 170 10 120 10 70 C10 30 35 5 60 5 C85 5 110 30 110 70 C110 120 60 170 60 170Z" fill="currentColor" opacity="0.15" />
-    <path d="M60 170 L60 5" stroke="currentColor" strokeWidth="1.5" opacity="0.3" />
-    <path d="M60 60 C40 50 25 55 15 70" stroke="currentColor" strokeWidth="1" opacity="0.2" />
-    <path d="M60 90 C80 78 95 82 105 95" stroke="currentColor" strokeWidth="1" opacity="0.2" />
-    <path d="M60 120 C42 110 30 115 22 128" stroke="currentColor" strokeWidth="1" opacity="0.15" />
-  </svg>
-);
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0 },
+};
 
-/* ── Stagger helpers ── */
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 24 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.65, ease: [0.22, 1, 0.36, 1] as const, delay },
-});
-
-const fadeRight = (delay = 0) => ({
-  initial: { opacity: 0, x: -28 },
-  animate: { opacity: 1, x: 0 },
-  transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const, delay },
-});
-
-const fadeLeft = (delay = 0) => ({
-  initial: { opacity: 0, x: 28 },
-  animate: { opacity: 1, x: 0 },
-  transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] as const, delay },
-});
-const trust = [
-  { value: "100%", label: "Natural" },
-  { value: "Premium", label: "Quality" },
-  { value: "Made in", label: "India" },
+const features = [
+  { icon: Leaf, label: "Ayurvedic Wellness" },
+  { icon: ShieldCheck, label: "Quality Focused" },
+  { icon: Sprout, label: "Nature Inspired" },
 ];
 
-const pillars = [
-  "Premium Herbal Ingredients",
-  "Traditional Ayurvedic Formulas",
-  "Quality Tested",
-  "Trusted Across India"
+const journeys = [
+  {
+    number: "01",
+    icon: ShoppingBag,
+    eyebrow: "FOR CUSTOMERS",
+    title: "Discover Wellness.",
+    description:
+      "Explore our Ayurvedic product collection and find wellness essentials for your everyday lifestyle.",
+    link: "/shop",
+    action: "Explore Products",
+    theme: "light",
+  },
+  {
+    number: "02",
+    icon: TrendingUp,
+    eyebrow: "FOR ENTREPRENEURS",
+    title: "Build With Amaze.",
+    description:
+      "Discover our distributor opportunity, understand the business model and explore how to get started.",
+    link: "/business-plan",
+    action: "Explore Opportunity",
+    theme: "dark",
+  },
 ];
 
 const Hero = () => {
   return (
-    <section
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-[#f5f0e8]"
-      style={{ fontFamily: "'DM Sans', sans-serif" }}
-    >
-
-      {/* ── Background layer ── */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {/* Warm orbs */}
-        <div className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full bg-[#e8a020]/8 blur-[130px]" />
-        <div className="absolute -bottom-40 -left-20 w-[500px] h-[500px] rounded-full bg-[#1c3320]/6 blur-[120px]" />
-
-        {/* Dot grid — masked to center */}
+    <section className="relative isolate overflow-hidden bg-[#f8f7f1] pb-16 pt-28 sm:pt-32 lg:pb-24">
+      {/* Background */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-[#e8a020]/10 blur-[120px]" />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-[#55784c]/10 blur-[120px]" />
         <div
-          className="absolute inset-0 opacity-[0.06]"
+          className="absolute inset-0 opacity-[0.035]"
           style={{
-            backgroundImage: "radial-gradient(circle, #1c3320 1px, transparent 1px)",
-            backgroundSize: "36px 36px",
-            maskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%)",
-            WebkitMaskImage: "radial-gradient(ellipse 70% 70% at 50% 50%, #000 60%, transparent 100%)",
+            backgroundImage: "radial-gradient(#1c3324 1px, transparent 1px)",
+            backgroundSize: "30px 30px",
           }}
         />
-
-        {/* Botanical leaf accents */}
-        <LeafDecor className="absolute top-16 right-[5%]  w-36 text-[#1c3320] opacity-[0.06]" />
-        <LeafDecor className="absolute bottom-20 left-[3%] w-24 text-[#c8860a] opacity-[0.07] rotate-[15deg]" />
-        <LeafDecor className="absolute top-1/2  left-[8%] w-16 text-[#1c6634] opacity-[0.05] -rotate-12" />
       </div>
 
-      {/* ── Content ── */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10 w-full pt-28 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 xl:gap-24 items-center">
-
-          {/* ════════════════════════════════
-              LEFT  —  Copy
-          ════════════════════════════════ */}
-          <div className="space-y-8 text-center lg:text-left">
-
-            {/* Badge */}
-            <motion.div {...fadeUp(0.05)} className="inline-flex items-center gap-2.5 bg-[#1c3320]/6 border border-[#1c3320]/10 px-4 py-2 rounded-full">
-              <Leaf className="w-3.5 h-3.5 text-[#e8a020] fill-[#e8a020]" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#1c3320]/60">
-                🌿100% Natural • Made in India
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-7 lg:px-12">
+        {/* Main hero */}
+        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
+          {/* Left content */}
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: {
+                transition: { staggerChildren: 0.12 },
+              },
+            }}
+            className="relative z-10 text-center lg:text-left"
+          >
+            <motion.div variants={fadeUp}>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#55784c]/15 bg-white/80 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.17em] text-[#55784c] shadow-sm">
+                <Sparkles size={13} className="text-[#c18b2c]" />
+                Welcome to Amaze Ayurveda
               </span>
             </motion.div>
 
-            {/* Headline */}
             <motion.h1
-              {...fadeUp(0.12)}
-              className="text-[3.5rem] sm:text-[5rem] md:text-[6.5rem] font-black leading-[0.92] tracking-[-0.03em] text-[#1c3320]"
-              style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
+              variants={fadeUp}
+              className="mt-7 text-[clamp(3rem,7vw,6.3rem)] font-black leading-[0.98] tracking-[-0.065em] text-[#1c3324]"
+              style={{ fontFamily: "Georgia, serif" }}
             >
-              ANCIENT{" "}
-              <span className="text-[#e8a020] italic">WISDOM</span>
+              Wellness
               <br />
-              MODERN{" "}
-              <span
-                className="relative inline-block"
-                style={{
-                  WebkitTextStroke: "2px #1c3320",
-                  color: "transparent",
-                }}
-              >
-                WELLNESS
+              Rooted in{" "}
+              <span className="relative inline-block italic text-[#b78a37]">
+                Nature.
+                <svg
+                  className="absolute -bottom-2 left-0 w-full"
+                  viewBox="0 0 240 12"
+                  fill="none"
+                >
+                  <path
+                    d="M3 9C62 1 160 1 237 7"
+                    stroke="#b78a37"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </span>
+              <br />
+              Growth Without Limits.
             </motion.h1>
 
-            {/* Body copy */}
             <motion.p
-              {...fadeUp(0.2)}
-              className="text-base md:text-lg text-[#1c3320]/55 leading-relaxed max-w-md mx-auto lg:mx-0 font-medium"
+              variants={fadeUp}
+              className="mx-auto mt-7 max-w-xl text-sm leading-7 text-[#647361] sm:text-base lg:mx-0"
             >
-              Experience authentic Ayurvedic wellness crafted with {" "}
-              <span className="text-[#1c3320] font-bold">premium herbs, traditional formulations {" "}</span>
-              and modern quality standards to support your healthier lifestyle.
+              Experience Ayurvedic wellness and discover a business opportunity
+              with Amaze. Shop products, learn about our philosophy or explore
+              becoming a distributor.
             </motion.p>
 
-            {/* Pillar checklist */}
-            <motion.ul {...fadeUp(0.27)} className="space-y-2.5 text-left max-w-xs mx-auto lg:mx-0">
-              {pillars.map((p) => (
-                <li key={p} className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#e8a020] flex-shrink-0" />
-                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#1c3320]/55">
-                    {p}
-                  </span>
-                </li>
-              ))}
-            </motion.ul>
-
-            {/* CTAs */}
+            {/* Feature points */}
             <motion.div
-              {...fadeUp(0.33)}
-              className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start pt-2"
+              variants={fadeUp}
+              className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-3 lg:justify-start"
             >
-              <Link href="/shop" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 h-14 px-8 rounded-xl bg-[#1c3320] hover:bg-[#1c6634] text-white font-black text-[11px] uppercase tracking-[0.1em] shadow-[0_8px_32px_rgba(28,50,32,0.25)] hover:shadow-[0_12px_40px_rgba(28,50,32,0.35)] hover:-translate-y-0.5 active:scale-[0.97] transition-all duration-200">
-                  <ShoppingBag className="w-4 h-4" />
-                  Shop Products
-                </Button>
+              {features.map(({ icon: Icon, label }) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-2 text-[11px] font-semibold text-[#55784c]"
+                >
+                  <Icon size={15} className="text-[#b78a37]" />
+                  {label}
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Primary CTAs */}
+            <motion.div
+              variants={fadeUp}
+              className="mt-9 flex flex-col justify-center gap-3 sm:flex-row lg:justify-start"
+            >
+              <Link
+                href="/shop"
+                className="group flex h-13 items-center justify-center gap-3 rounded-xl bg-[#1c3324] px-7 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-[#1c3324]/15 transition-all duration-300 hover:-translate-y-1 hover:bg-[#34543a]"
+              >
+                <ShoppingBag size={17} />
+                Shop Products
+                <ArrowRight
+                  size={16}
+                  className="transition-transform group-hover:translate-x-1"
+                />
               </Link>
-              <Link href="/about-us" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto inline-flex items-center justify-center gap-2 h-14 px-8 rounded-xl border-2 border-[#1c3320]/15 bg-transparent hover:bg-[#1c3320]/5 hover:border-[#1c3320]/25 text-[#1c3320]/65 hover:text-[#1c3320] font-bold text-[11px] uppercase tracking-[0.1em] transition-all duration-200">
-                  Explore Ayurveda
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+
+              <Link
+                href="/business-plan"
+                className="flex h-13 items-center justify-center gap-3 rounded-xl border border-[#1c3324]/15 bg-white/70 px-7 text-xs font-bold uppercase tracking-wider text-[#1c3324] transition-all duration-300 hover:-translate-y-1 hover:border-[#b78a37] hover:bg-white"
+              >
+                <Users size={17} />
+                Join Our Business
+                <ArrowUpRight size={16} />
               </Link>
             </motion.div>
 
-            {/* Trust stats */}
             <motion.div
-              {...fadeUp(0.4)}
-              className="flex items-center gap-6 justify-center lg:justify-start pt-2"
+              variants={fadeUp}
+              className="mt-9 flex items-center justify-center gap-3 lg:justify-start"
             >
-              {trust.map((t, i) => (
-                <React.Fragment key={t.label}>
-                  {i > 0 && <div className="h-8 w-px bg-[#1c3320]/12" />}
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#e9eee4] text-[#55784c]">
+                <Leaf size={17} />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-[#1c3324]">
+                  Ancient Wisdom. Modern Wellness.
+                </p>
+                <p className="mt-0.5 text-[10px] text-[#899487]">
+                  Explore the Amaze experience
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Right visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, x: 20 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="relative mx-auto w-full max-w-[540px]"
+          >
+            <div className="absolute -inset-5 rotate-3 rounded-[3rem] border border-[#55784c]/10" />
+            <div className="absolute -inset-5 -rotate-3 rounded-[3rem] border border-[#b78a37]/10" />
+
+            <div className="relative overflow-hidden rounded-[2rem] bg-[#1c3324] p-2.5 shadow-[0_30px_80px_rgba(28,51,36,0.2)] sm:rounded-[2.5rem]">
+              <div className="relative aspect-[4/4.6] overflow-hidden rounded-[1.5rem] sm:rounded-[2rem]">
+                <Image
+                  src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=85&w=1200"
+                  alt="Natural wellness and botanical lifestyle"
+                  fill
+                  priority
+                  sizes="(max-width: 768px) 100vw, 540px"
+                  className="object-cover transition-transform duration-1000 hover:scale-105"
+                />
+
+                <div className="absolute inset-0 bg-gradient-to-t from-[#142719]/90 via-[#142719]/10 to-transparent" />
+
+                {/* Floating badge */}
+                <motion.div
+                  animate={{ y: [0, -8, 0] }}
+                  transition={{
+                    duration: 4,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="absolute right-5 top-5 flex items-center gap-2 rounded-2xl border border-white/30 bg-white/90 px-4 py-3 shadow-xl backdrop-blur-xl sm:right-7 sm:top-7"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eaf0e5] text-[#55784c]">
+                    <Leaf size={19} />
+                  </div>
                   <div>
-                    <p className="text-xl font-black text-[#1c3320] leading-none">{t.value}</p>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#1c3320]/40 mt-0.5">
-                      {t.label}
+                    <p className="text-[10px] font-bold text-[#1c3324]">
+                      Inspired by Nature
+                    </p>
+                    <p className="text-[9px] text-[#899487]">
+                      The Amaze philosophy
                     </p>
                   </div>
-                </React.Fragment>
-              ))}
-            </motion.div>
-          </div>
+                </motion.div>
 
-          {/* ════════════════════════════════
-              RIGHT  —  Image composition
-          ════════════════════════════════ */}
-          <motion.div
-            {...fadeLeft(0.15)}
-            className="relative flex items-center justify-center"
-          >
-            {/* Outer ring — forest green border */}
-            <div className="absolute inset-[-18px] rounded-[3.5rem] border border-[#1c3320]/8 rotate-2" />
-            <div className="absolute inset-[-18px] rounded-[3.5rem] border border-[#1c3320]/5 -rotate-2" />
-
-            {/* Image card */}
-            <div className="relative z-10 w-full rounded-[3rem] bg-[#1c3320] p-3 shadow-[0_40px_80px_-16px_rgba(28,50,32,0.3)] overflow-hidden">
-
-              {/* Dark forest header strip */}
-              <div className="relative overflow-hidden">
-                <div className="aspect-[4/5] overflow-hidden rounded-[2.5rem] relative group">
-                  <Image
-                    src="https://images.unsplash.com/photo-1599420186946-7b6fb4e297f0?auto=format&fit=crop&q=80&w=800"
-                    alt="Indian Ayurvedic Heritage"
-                    fill
-                    className="object-cover transition-transform duration-1000 group-hover:scale-105"
-                  />
-                  {/* Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#1c3320]/80 via-[#1c3320]/10 to-transparent" />
-
-                  {/* Floating trust badge — top right */}
-                  <motion.div
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute top-6 right-6 bg-[#e8a020] rounded-2xl p-4 shadow-[0_8px_32px_rgba(232,160,32,0.4)] flex flex-col items-center gap-1.5"
-                  >
-                    <Leaf className="w-5 h-5 text-[#1c3320] fill-[#1c3320]" />
-                    <span className="text-[8px] font-black uppercase tracking-tight text-[#1c3320] leading-tight text-center">
-                      Natural
-                    </span>
-                  </motion.div>
-
-                  {/* Bottom info card */}
-                  <div className="absolute bottom-5 left-5 right-5 bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-5">
-                    <div className="flex items-center gap-3 mb-2">
-                      {/* Avatar stack */}
-                      <div className="flex -space-x-2">
-                        {[0, 1, 2].map((i) => (
-                          <div
-                            key={i}
-                            className="w-7 h-7 rounded-full border-2 border-white/30 bg-gradient-to-br from-[#e8a020]/60 to-[#1c6634]/60"
-                          />
-                        ))}
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#e8a020]">
-                        Trusted by Thousands
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-white leading-snug">
-                      Discover authentic Ayurvedic wellness crafted with nature's finest herbs.                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Brand strip below image (inside dark card) */}
-              <div className="flex items-center justify-between px-4 py-4">
-                <div className="flex items-center gap-2">
-                  <LeafDecor className="w-5 text-[#e8a020]" />
-                  <span
-                    className="text-sm font-black text-white"
-                    style={{ fontFamily: "'Playfair Display', Georgia, serif" }}
-                  >
-                    Amaze <span className="text-[#e8a020] italic">Ayurveda</span>
+                {/* Bottom image content */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 text-white sm:p-8">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-[#e8a020]">
+                    A holistic experience
                   </span>
-                </div>
-                <div className="text-[9px] font-bold text-white/30 uppercase tracking-[0.25em]">
-                  🌿100% Natural Wellness
+                  <h2
+                    className="mt-3 max-w-sm text-3xl font-bold leading-tight sm:text-4xl"
+                    style={{ fontFamily: "Georgia, serif" }}
+                  >
+                    Nature's wisdom.
+                    <br />
+                    Your everyday wellness.
+                  </h2>
+                  <Link
+                    href="/about-us"
+                    className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-white transition hover:text-[#e8a020]"
+                  >
+                    Discover our story <ArrowRight size={15} />
+                  </Link>
                 </div>
               </div>
             </div>
-          </motion.div>
 
+            {/* Floating decorative element */}
+            <motion.div
+              animate={{ rotate: [0, 8, 0], y: [0, 7, 0] }}
+              transition={{
+                duration: 6,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute -bottom-5 -left-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#e8e0cf] bg-white text-[#b78a37] shadow-xl sm:-left-8 sm:h-20 sm:w-20"
+            >
+              <Sprout size={32} strokeWidth={1.4} />
+            </motion.div>
+          </motion.div>
+        </div>
+
+        {/* Two business journeys */}
+        <div className="mt-24">
+          <div className="mb-8 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#b78a37]">
+              One Brand. Two Ways to Explore.
+            </p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-[#1c3324] sm:text-3xl">
+              What brings you to Amaze?
+            </h2>
+            <p className="mt-2 text-sm text-[#899487]">
+              Choose the experience that fits your goals.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            {journeys.map((item, index) => {
+              const Icon = item.icon;
+              const dark = item.theme === "dark";
+
+              return (
+                <motion.div
+                  key={item.number}
+                  initial={{ opacity: 0, y: 25 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.2 }}
+                  transition={{ duration: 0.5, delay: index * 0.12 }}
+                  whileHover={{ y: -5 }}
+                  className={`group relative overflow-hidden rounded-3xl border p-7 transition-all duration-300 sm:p-9 ${
+                    dark
+                      ? "border-[#1c3324] bg-[#1c3324] text-white"
+                      : "border-[#e5e9df] bg-white text-[#1c3324] shadow-sm hover:shadow-xl hover:shadow-[#1c3324]/5"
+                  }`}
+                >
+                  <span
+                    className={`absolute -right-3 -top-10 text-[130px] font-black leading-none ${
+                      dark ? "text-white/[0.04]" : "text-[#1c3324]/[0.035]"
+                    }`}
+                  >
+                    {item.number}
+                  </span>
+
+                  <div className="relative flex items-start justify-between">
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-2xl ${
+                        dark
+                          ? "bg-white/10 text-[#e8a020]"
+                          : "bg-[#edf2e9] text-[#55784c]"
+                      }`}
+                    >
+                      <Icon size={22} />
+                    </div>
+                    <span
+                      className={`text-[9px] font-bold tracking-[0.2em] ${
+                        dark ? "text-white/40" : "text-[#899487]"
+                      }`}
+                    >
+                      {item.eyebrow}
+                    </span>
+                  </div>
+
+                  <div className="relative mt-7">
+                    <h3 className="text-2xl font-bold sm:text-3xl">
+                      {item.title}
+                    </h3>
+                    <p
+                      className={`mt-3 max-w-md text-sm leading-7 ${
+                        dark ? "text-white/60" : "text-[#71806f]"
+                      }`}
+                    >
+                      {item.description}
+                    </p>
+
+                    <Link
+                      href={item.link}
+                      className={`mt-7 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-xs font-bold transition-all ${
+                        dark
+                          ? "bg-[#e8a020] text-[#1c3324] hover:bg-[#f2bd55]"
+                          : "bg-[#1c3324] text-white hover:bg-[#34543a]"
+                      }`}
+                    >
+                      {item.action}
+                      <ChevronRight
+                        size={16}
+                        className="transition-transform group-hover:translate-x-1"
+                      />
+                    </Link>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

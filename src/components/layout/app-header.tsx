@@ -1,6 +1,7 @@
+// src/components/layout/AppHeader.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -20,7 +21,9 @@ import {
   ChevronRight,
   Leaf,
   ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { APP_LINKS } from "@/constants/links";
 
@@ -37,287 +40,352 @@ export const AppHeader = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = sidebarOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <>
-      {/* HEADER */}
-      <header className="sticky top-0 z-[60] w-full border-b border-[#e9e9df] bg-[#fbfbf7]/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-[76px] max-w-[1600px] items-center justify-between gap-5 px-4 sm:px-7 lg:px-10">
-          {/* LEFT: BRAND */}
-          <div className="flex shrink-0 items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              aria-label="Open menu"
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#e8e9df] text-[#263a2b] transition hover:bg-[#edf1e8] lg:hidden"
-            >
-              <Menu size={20} />
-            </button>
+      {/* Floating header */}
+      <header className="pointer-events-none fixed inset-x-0 top-0 z-[60] px-3 pt-3 sm:px-5 sm:pt-4">
+        <motion.div
+          initial={{ y: -35, opacity: 0 }}
+          animate={{
+            y: 0,
+            opacity: 1,
+            maxWidth: scrolled ? 1320 : 1480,
+          }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className={cn(
+            "pointer-events-auto relative mx-auto rounded-2xl border transition-all duration-300",
+            scrolled
+              ? "border-[#e4e9df]/90 bg-white/90 shadow-[0_10px_35px_rgba(28,51,36,0.12)] backdrop-blur-2xl"
+              : "border-white/70 bg-[#fbfbf7]/85 shadow-[0_5px_25px_rgba(28,51,36,0.07)] backdrop-blur-xl",
+          )}
+        >
+          <div
+            className={cn(
+              "mx-auto flex items-center justify-between gap-3 px-3 transition-all duration-300 sm:px-5",
+              scrolled ? "h-[55px]" : "h-[65px]",
+            )}
+          >
+            {/* Brand */}
+            <div className="flex shrink-0 items-center gap-2.5">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                aria-label="Open menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-[#1c3324] transition hover:bg-[#edf2e9] lg:hidden"
+              >
+                <Menu size={21} />
+              </button>
+            </div>
 
-            <Link href="/" className="group flex items-center gap-3">
-              <div className="relative h-11 w-11 overflow-hidden rounded-xl bg-[#1c3320] p-1">
-                <Image
-                  src="/amaze-logo.png"
-                  alt="Amaze Ayurveda"
-                  fill
-                  priority
-                  className="object-contain p-1.5 transition-transform group-hover:scale-105"
-                />
-              </div>
+            {/* Desktop navigation */}
+            <nav className="hidden items-center gap-1 lg:flex">
+              {NAV_LINKS.map((item) => {
+                const active = isActive(item.href);
 
-              <div className="hidden sm:block">
-                <p className="text-[17px] font-black leading-none tracking-tight text-[#1c3320]">
-                  AMAZE <span className="text-[#b68a36]">AYURVEDA</span>
-                </p>
-                <p className="mt-1.5 text-[8px] font-bold uppercase tracking-[2px] text-gray-400">
-                  Ancient Wisdom. Modern Wellness.
-                </p>
-              </div>
-            </Link>
-          </div>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-colors duration-200",
+                      active
+                        ? "text-[#1c3324]"
+                        : "text-[#71806f] hover:text-[#1c3324]",
+                    )}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="header-active-link"
+                        className="absolute inset-0 rounded-xl bg-[#edf2e9]"
+                        transition={{
+                          type: "spring",
+                          stiffness: 380,
+                          damping: 30,
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10">{item.label}</span>
+                    {active && (
+                      <motion.span
+                        layoutId="header-active-dot"
+                        className="absolute bottom-1 left-1/2 z-10 h-1 w-1 -translate-x-1/2 rounded-full bg-[#c99a3e]"
+                      />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
 
-          {/* CENTER: DESKTOP NAVIGATION */}
-          <nav className="hidden items-center gap-1 lg:flex">
-            {NAV_LINKS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
+            {/* Actions */}
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.94 }}
+                aria-label="Search"
+                onClick={() => setSearchOpen(!searchOpen)}
                 className={cn(
-                  "relative rounded-full px-4 py-2.5 text-[12px] font-semibold transition-all",
-                  isActive(item.href)
-                    ? "bg-[#eaf0e5] text-[#1c3320]"
-                    : "text-gray-500 hover:bg-[#f0f2eb] hover:text-[#1c3320]",
+                  "flex h-10 w-10 items-center justify-center rounded-xl transition",
+                  searchOpen
+                    ? "bg-[#edf2e9] text-[#1c3324]"
+                    : "text-[#71806f] hover:bg-[#edf2e9] hover:text-[#1c3324]",
                 )}
               >
-                {item.label}
-                {isActive(item.href) && (
-                  <span className="absolute bottom-0 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-[#c99a3e]" />
-                )}
+                <Search size={19} />
+              </motion.button>
+
+              <Link
+                href="/wishlist"
+                aria-label="Wishlist"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl text-[#71806f] transition hover:bg-[#edf2e9] hover:text-[#1c3324] sm:flex"
+              >
+                <Heart size={19} />
               </Link>
-            ))}
-          </nav>
 
-          {/* RIGHT: ACTIONS */}
-          <div className="flex shrink-0 items-center gap-2">
-            {/* Search */}
-            <button
-              aria-label="Search"
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition hover:bg-[#edf1e8] hover:text-[#1c3320]"
-            >
-              <Search size={19} />
-            </button>
-
-            {/* Wishlist */}
-            <Link
-              href="/wishlist"
-              aria-label="Wishlist"
-              className="hidden h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition hover:bg-[#edf1e8] hover:text-[#1c3320] sm:flex"
-            >
-              <Heart size={19} />
-            </Link>
-
-            {/* Cart */}
-            <Link
-              href="/cart"
-              aria-label="Shopping cart"
-              className="relative flex h-10 w-10 items-center justify-center rounded-xl text-gray-500 transition hover:bg-[#edf1e8] hover:text-[#1c3320]"
-            >
-              <ShoppingBag size={19} />
-            </Link>
-
-            {/* Login */}
-            <Link
-              href={APP_LINKS.SIGN_IN}
-              className="hidden items-center gap-2 rounded-xl bg-[#1c3320] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm transition hover:bg-[#34543a] sm:flex"
-            >
-              <UserRound size={15} />
-              Login
-            </Link>
-          </div>
-        </div>
-
-        {/* SEARCH EXPANSION */}
-        {searchOpen && (
-          <div className="border-t border-[#e9e9df] bg-white px-4 py-4">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                window.location.href = `/shop?search=${encodeURIComponent(search)}`;
-              }}
-              className="mx-auto flex max-w-2xl items-center gap-3"
-            >
-              <Search size={18} className="text-gray-400" />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products, categories..."
-                className="h-11 flex-1 bg-transparent text-sm outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setSearchOpen(false);
-                }}
-                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
+              <Link
+                href="/cart"
+                aria-label="Shopping cart"
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl text-[#71806f] transition hover:bg-[#edf2e9] hover:text-[#1c3324]"
               >
-                <X size={18} />
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-[#1c3320] px-5 py-3 text-xs font-bold text-white"
+                <ShoppingBag size={19} />
+              </Link>
+
+              <Link
+                href={APP_LINKS.SIGN_IN}
+                className="hidden items-center gap-2 rounded-xl bg-[#1c3324] px-4 py-2.5 text-[11px] font-bold text-white shadow-md shadow-[#1c3324]/15 transition hover:bg-[#34543a] sm:flex"
               >
-                Search
-              </button>
-            </form>
+                <UserRound size={15} />
+                Login
+              </Link>
+            </div>
           </div>
-        )}
+
+          {/* Animated search panel */}
+          <AnimatePresence>
+            {searchOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="overflow-hidden"
+              >
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    window.location.href = `/shop?search=${encodeURIComponent(search)}`;
+                  }}
+                  className="flex items-center gap-3 border-t border-[#e9ede6] px-4 py-3 sm:px-6"
+                >
+                  <Search size={18} className="shrink-0 text-[#899487]" />
+                  <input
+                    autoFocus
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search products, categories..."
+                    className="h-10 min-w-0 flex-1 bg-transparent text-sm text-[#1c3324] outline-none placeholder:text-[#a1aaa0]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setSearchOpen(false);
+                    }}
+                    aria-label="Close search"
+                    className="rounded-lg p-2 text-[#899487] transition hover:bg-[#edf2e9]"
+                  >
+                    <X size={17} />
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-xl bg-[#1c3324] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-[#34543a]"
+                  >
+                    Search
+                  </button>
+                </form>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </header>
 
-      {/* MOBILE SIDEBAR BACKDROP */}
-      <div
-        onClick={() => setSidebarOpen(false)}
-        className={cn(
-          "fixed inset-0 z-[70] bg-black/40 transition-opacity duration-300 lg:hidden",
-          sidebarOpen ? "visible opacity-100" : "invisible opacity-0",
+      {/* Mobile drawer backdrop */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-[70] bg-[#101a12]/50 backdrop-blur-sm lg:hidden"
+          />
         )}
-      />
+      </AnimatePresence>
 
-      {/* MOBILE SIDEBAR */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-[80] flex w-[290px] flex-col bg-[#fbfbf7] shadow-2xl transition-transform duration-300 lg:hidden",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.aside
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 32 }}
+            className="fixed inset-y-0 left-0 z-[80] flex w-[min(320px,88vw)] flex-col overflow-hidden bg-[#fbfbf7] shadow-2xl lg:hidden"
+          >
+            <div className="flex h-[76px] items-center justify-between border-b border-[#e9ede6] px-5">
+              <Link
+                href="/"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3"
+              >
+                <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-[#1c3324]">
+                  <Image
+                    src="/amaze-logo.png"
+                    alt="Amaze Ayurveda"
+                    fill
+                    sizes="40px"
+                    className="object-contain p-1.5"
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-[#1c3324]">
+                    AMAZE <span className="text-[#b68a36]">AYURVEDA</span>
+                  </p>
+                  <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-[#899487]">
+                    Natural Wellness
+                  </p>
+                </div>
+              </Link>
+
+              <button
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close menu"
+                className="rounded-xl p-2 text-[#71806f] transition hover:bg-[#edf2e9]"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-7">
+              <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[2px] text-[#a0a99d]">
+                Explore
+              </p>
+
+              <nav className="space-y-1.5">
+                {NAV_LINKS.map((item, index) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+
+                  return (
+                    <motion.div
+                      key={item.href}
+                      initial={{ opacity: 0, x: -15 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.045 }}
+                    >
+                      <Link
+                        href={item.href}
+                        onClick={() => setSidebarOpen(false)}
+                        className={cn(
+                          "flex items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition",
+                          active
+                            ? "bg-[#1c3324] text-white shadow-lg shadow-[#1c3324]/15"
+                            : "text-[#647361] hover:bg-[#edf2e9] hover:text-[#1c3324]",
+                        )}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon size={18} />
+                          {item.label}
+                        </span>
+                        <ChevronRight size={15} className="opacity-50" />
+                      </Link>
+                    </motion.div>
+                  );
+                })}
+              </nav>
+
+              <div className="my-7 border-t border-[#e9ede6]" />
+
+              <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[2px] text-[#a0a99d]">
+                Customer Care
+              </p>
+
+              <Link
+                href="/contact"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold text-[#647361] transition hover:bg-[#edf2e9]"
+              >
+                <Headphones size={18} />
+                Help & Support
+              </Link>
+
+              <Link
+                href="/wishlist"
+                onClick={() => setSidebarOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold text-[#647361] transition hover:bg-[#edf2e9]"
+              >
+                <Heart size={18} />
+                My Wishlist
+              </Link>
+
+              <div className="relative mt-9 overflow-hidden rounded-2xl bg-[#1c3324] p-5 text-white">
+                <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full border border-white/10" />
+                <div className="relative">
+                  <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#e8a020]">
+                    <Leaf size={20} />
+                  </div>
+                  <p className="font-bold">Grow With Amaze</p>
+                  <p className="mt-2 text-xs leading-5 text-white/60">
+                    Explore our distributor business opportunity.
+                  </p>
+                  <Link
+                    href="/business-plan"
+                    onClick={() => setSidebarOpen(false)}
+                    className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#e8a020]"
+                  >
+                    Explore business <ArrowUpRight size={14} />
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-[#e9ede6] p-5">
+              <Link
+                href={APP_LINKS.SIGN_IN}
+                onClick={() => setSidebarOpen(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1c3324] py-3.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#34543a]"
+              >
+                <UserRound size={16} />
+                Login / My Account
+              </Link>
+              <p className="mt-4 text-center text-[10px] text-[#a0a99d]">
+                © 2026 Amaze Ayurveda
+              </p>
+            </div>
+          </motion.aside>
         )}
-      >
-        {/* Sidebar Brand */}
-        <div className="flex h-[78px] items-center justify-between border-b border-[#e9e9df] px-5">
-          <Link
-            href="/"
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3"
-          >
-            <div className="relative h-10 w-10 rounded-xl bg-[#1c3320]">
-              <Image
-                src="/amaze-logo.png"
-                alt="Amaze Ayurveda"
-                fill
-                className="object-contain p-1.5"
-              />
-            </div>
-            <div>
-              <p className="text-sm font-black text-[#1c3320]">
-                AMAZE <span className="text-[#b68a36]">AYURVEDA</span>
-              </p>
-              <p className="text-[8px] font-bold uppercase tracking-widest text-gray-400">
-                Natural Wellness
-              </p>
-            </div>
-          </Link>
-
-          <button
-            onClick={() => setSidebarOpen(false)}
-            aria-label="Close menu"
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Navigation */}
-        <div className="flex-1 overflow-y-auto px-4 py-7">
-          <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[2px] text-gray-400">
-            Explore
-          </p>
-
-          <nav className="space-y-1">
-            {NAV_LINKS.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={cn(
-                    "flex items-center justify-between rounded-xl px-4 py-3.5 text-sm font-semibold transition",
-                    isActive(item.href)
-                      ? "bg-[#1c3320] text-white"
-                      : "text-gray-600 hover:bg-[#edf1e8] hover:text-[#1c3320]",
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon size={18} />
-                    {item.label}
-                  </span>
-                  <ChevronRight size={15} className="opacity-40" />
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="my-7 border-t border-[#e9e9df]" />
-
-          <p className="mb-3 px-3 text-[10px] font-black uppercase tracking-[2px] text-gray-400">
-            Customer Care
-          </p>
-
-          <Link
-            href="/contact"
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold text-gray-600 transition hover:bg-[#edf1e8]"
-          >
-            <Headphones size={18} />
-            Help & Support
-          </Link>
-
-          <Link
-            href="/wishlist"
-            onClick={() => setSidebarOpen(false)}
-            className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-semibold text-gray-600 transition hover:bg-[#edf1e8]"
-          >
-            <Heart size={18} />
-            My Wishlist
-          </Link>
-
-          {/* Business Card */}
-          <div className="mt-9 rounded-2xl bg-[#1c3320] p-5 text-white">
-            <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-[#e8a020]">
-              <Leaf size={20} />
-            </div>
-            <p className="font-bold">Grow With Amaze</p>
-            <p className="mt-2 text-xs leading-5 text-white/60">
-              Explore our distributor business opportunity.
-            </p>
-            <Link
-              href="/business-plan"
-              onClick={() => setSidebarOpen(false)}
-              className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-[#e8a020]"
-            >
-              Explore business <ArrowUpRight size={14} />
-            </Link>
-          </div>
-        </div>
-
-        {/* Sidebar Bottom */}
-        <div className="border-t border-[#e9e9df] p-5">
-          <Link
-            href={APP_LINKS.SIGN_IN}
-            onClick={() => setSidebarOpen(false)}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1c3320] py-3.5 text-xs font-bold uppercase tracking-wider text-white"
-          >
-            <UserRound size={16} />
-            Login / My Account
-          </Link>
-          <p className="mt-4 text-center text-[10px] text-gray-400">
-            © 2026 Amaze Ayurveda
-          </p>
-        </div>
-      </aside>
+      </AnimatePresence>
     </>
   );
 };
