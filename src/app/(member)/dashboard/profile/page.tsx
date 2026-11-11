@@ -111,18 +111,18 @@ const businessItems: MenuItem[] = [
 ];
 
 const preferenceItems: MenuItem[] = [
-  {
-    label: "Notifications",
-    description: "Manage your notifications",
-    icon: Bell,
-    href: "/dashboard/notifications",
-  },
-  {
-    label: "Order History",
-    description: "View your purchases and orders",
-    icon: ShoppingBag,
-    href: "/dashboard/orders",
-  },
+  // {
+  //   label: "Notifications",
+  //   description: "Manage your notifications",
+  //   icon: Bell,
+  //   href: "/dashboard/notifications",
+  // },
+  // {
+  //   label: "Order History",
+  //   description: "View your purchases and orders",
+  //   icon: ShoppingBag,
+  //   href: "/dashboard/orders",
+  // },
   // {
   //   label: "Login History",
   //   description: "Review your account activity",
