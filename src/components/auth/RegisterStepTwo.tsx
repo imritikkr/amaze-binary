@@ -228,7 +228,7 @@ export function RegisterStepTwo({
           </p>
         ) : (
           <p className="text-xs text-neutral-400">
-            An OTP will be sent to verify your number.
+            An OTP will be sent to verify your number later.
           </p>
         )}
       </div>
@@ -469,7 +469,7 @@ export function RegisterStepTwo({
             </>
           ) : (
             <>
-              Continue to OTP
+              Complete Registration
               <ArrowRight className="h-4 w-4" />
             </>
           )}

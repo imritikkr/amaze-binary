@@ -19,21 +19,6 @@ export function RegisterStepper({ currentStep }: StepperProps) {
 
   return (
     <div className="w-full px-2 py-3">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#899487]">
-            Registration
-          </p>
-          <p className="mt-1 text-sm font-bold text-[#1c3324]">
-            Step {activeStep} of 2
-          </p>
-        </div>
-
-        <span className="text-xs font-semibold text-[#55784c]">
-          {activeStep * 50}%
-        </span>
-      </div>
-
       <div className="relative">
         <div className="absolute left-[25%] right-[25%] top-4 h-[2px] bg-[#e8ece5]">
           <motion.div
