@@ -1,258 +1,151 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import {
-  UserRound,
-  Phone,
-  CalendarDays,
-  Pencil,
-  ShieldCheck,
-  CheckCircle2,
-  Clock3,
-  Sparkles,
-  ArrowUpRight,
-  Hash,
-} from "lucide-react";
-import { motion } from "framer-motion";
+import { UserRound, Hash, Mail, Phone, ChevronDown, Leaf } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ProfileHeaderProps {
   member: {
     userId: string;
     name: string;
-    mobile: string;
+    email?: string | null;
+    mobile?: string | null;
     avatarUrl?: string | null;
-    accountStatus: string;
-    activationStatus: string;
-    createdAt: string;
   };
 }
 
-function formatDate(date: string) {
-  const parsedDate = new Date(date);
-
-  if (Number.isNaN(parsedDate.getTime())) return "Not available";
-
-  return parsedDate.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function getAccountStatus(status: string) {
-  const value = status?.toUpperCase();
-
-  switch (value) {
-    case "ACTIVE":
-      return {
-        label: "Account Active",
-        icon: CheckCircle2,
-        className: "bg-emerald-400/15 text-emerald-200 border-emerald-300/20",
-        dot: "bg-emerald-400",
-      };
-    case "INACTIVE":
-      return {
-        label: "Account Inactive",
-        icon: Clock3,
-        className: "bg-amber-400/15 text-amber-200 border-amber-300/20",
-        dot: "bg-amber-400",
-      };
-    case "SUSPENDED":
-      return {
-        label: "Suspended",
-        icon: ShieldCheck,
-        className: "bg-red-400/15 text-red-200 border-red-300/20",
-        dot: "bg-red-400",
-      };
-    case "TERMINATED":
-      return {
-        label: "Terminated",
-        icon: ShieldCheck,
-        className: "bg-red-400/15 text-red-200 border-red-300/20",
-        dot: "bg-red-400",
-      };
-    default:
-      return {
-        label: status || "Unknown status",
-        icon: Clock3,
-        className: "bg-white/10 text-white/75 border-white/15",
-        dot: "bg-white/60",
-      };
-  }
-}
-
-function getActivationStatus(status: string) {
-  const value = status?.toUpperCase();
-
-  switch (value) {
-    case "ACTIVE":
-      return {
-        label: "Activated",
-        className: "bg-[#edf4e9] text-[#365b3b]",
-      };
-    case "FREE":
-      return {
-        label: "Free membership",
-        className: "bg-[#f5f0e5] text-[#94712d]",
-      };
-    case "INACTIVE":
-      return {
-        label: "Not activated",
-        className: "bg-[#f9eeee] text-[#a45454]",
-      };
-    default:
-      return {
-        label: status || "Not available",
-        className: "bg-[#f1f3ef] text-[#687568]",
-      };
-  }
-}
-
 export function ProfileHeader({ member }: ProfileHeaderProps) {
-  const accountStatus = getAccountStatus(member.accountStatus);
-  const activationStatus = getActivationStatus(member.activationStatus);
-
-  const formattedDate = formatDate(member.createdAt);
-
-  const mobile = member.mobile
-    ? member.mobile.startsWith("+")
-      ? member.mobile
-      : `+91 ${member.mobile}`
-    : "Not available";
-
-  const StatusIcon = accountStatus.icon;
+  const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.section
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="relative isolate overflow-hidden rounded-3xl border border-[#e3e9df] bg-white shadow-[0_8px_32px_rgba(28,51,36,0.07)]"
+      transition={{ duration: 0.3 }}
+      className="relative overflow-hidden rounded-2xl border border-[#dce8d7] bg-gradient-to-br from-[#f0f7eb] via-[#f8fbf5] to-white shadow-sm"
     >
-      {/* Decorative background */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[230px] bg-[#1c3324] sm:h-[205px]" />
+      {/* Decorative botanical background */}
+      <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-[#c8dfbd]/30 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-16 -left-10 h-32 w-32 rounded-full bg-[#d9e9ce]/40 blur-2xl" />
 
-      <div className="pointer-events-none absolute -right-16 -top-28 -z-10 h-72 w-72 rounded-full border border-white/[0.07]" />
-      <div className="pointer-events-none absolute -right-2 -top-20 -z-10 h-52 w-52 rounded-full border border-white/[0.07]" />
-      <div className="pointer-events-none absolute right-[25%] top-0 -z-10 h-40 w-40 rounded-full bg-[#e8a020]/10 blur-3xl" />
-
-      {/* Top banner content */}
-      <div className="relative px-5 pb-16 pt-6 sm:px-7 sm:pb-14 sm:pt-7">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#e8c477]">
-            <Sparkles size={14} />
-            Member profile
-          </div>
-
-          <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-semibold ${accountStatus.className}`}
-          >
-            <span className={`h-1.5 w-1.5 rounded-full ${accountStatus.dot}`} />
-            <StatusIcon size={12} />
-            {accountStatus.label}
-          </div>
-        </div>
-
-        <div className="mt-6 max-w-2xl">
-          <p className="text-xs font-medium text-white/55">
-            Welcome to your member account
-          </p>
-
-          <h1 className="mt-1 break-words text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            {member.name || "Member"}
-          </h1>
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2.5 py-1.5 font-mono text-[11px] text-white/80">
-              <Hash size={12} className="text-[#e8a020]" />
-              {member.userId}
-            </span>
-
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${activationStatus.className}`}
-            >
-              <ShieldCheck size={12} />
-              {activationStatus.label}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Lower profile information */}
-      <div className="relative px-5 pb-5 sm:px-7 sm:pb-7">
-        <div className="-mt-11 flex flex-col gap-5 sm:-mt-12 sm:flex-row sm:items-end">
+      <div className="relative p-4 sm:p-5">
+        {/* Main Profile */}
+        <div className="flex items-center gap-3.5">
           {/* Avatar */}
-          <div className="relative h-[100px] w-[100px] shrink-0 self-center rounded-[25px] border-[5px] border-white bg-[#edf2e9] shadow-[0_5px_20px_rgba(0,0,0,0.12)] sm:h-[112px] sm:w-[112px] sm:self-auto sm:rounded-[28px]">
-            <div className="relative h-full w-full overflow-hidden rounded-[19px] bg-[#edf2e9] sm:rounded-[22px]">
+          <div className="relative shrink-0">
+            <div className="relative h-16 w-16 overflow-hidden rounded-full border-[3px] border-white bg-[#e4efdf] shadow-md">
               {member.avatarUrl ? (
                 <Image
                   src={member.avatarUrl}
-                  alt={`${member.name || "Member"} profile photograph`}
+                  alt={member.name || "Profile photo"}
                   fill
-                  sizes="112px"
+                  sizes="64px"
                   className="object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <UserRound
-                    size={43}
-                    strokeWidth={1.3}
-                    className="text-[#55784c]"
-                  />
+                <div className="flex h-full w-full items-center justify-center text-[#55784c]">
+                  <UserRound size={30} strokeWidth={1.5} />
                 </div>
               )}
             </div>
 
-            <div className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-full border-[3px] border-white bg-[#e8a020] text-[#1c3324]">
-              <CheckCircle2 size={13} />
-            </div>
+            <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#55784c] text-white">
+              <Leaf size={12} />
+            </span>
           </div>
 
-          {/* Member details */}
-          <div className="min-w-0 flex-1 pb-1 text-center sm:text-left">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#9b7734]">
-              Contact information
+          {/* Name and Member ID */}
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-[#78916f]">
+              Amaze Ayurveda
             </p>
 
-            <div className="mt-2 flex flex-col gap-3 text-xs text-[#657365] sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5">
-              <div className="inline-flex items-center justify-center gap-2 sm:justify-start">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f0f4ed] text-[#55784c]">
-                  <Phone size={13} />
-                </span>
-                <span className="font-medium text-[#344638]">{mobile}</span>
-              </div>
+            <h2 className="truncate text-base font-bold tracking-tight text-[#1c3324] sm:text-lg">
+              {member.name || "Member"}
+            </h2>
 
-              <div className="inline-flex items-center justify-center gap-2 sm:justify-start">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#f5f1e7] text-[#a17c32]">
-                  <CalendarDays size={13} />
-                </span>
-                <span>
-                  Joined{" "}
-                  <span className="font-semibold text-[#344638]">
-                    {formattedDate}
-                  </span>
-                </span>
-              </div>
+            <div className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-[#d6e5ce] bg-white/80 px-2.5 py-1">
+              <Hash size={12} className="shrink-0 text-[#55784c]" />
+              <span className="truncate text-[11px] font-semibold text-[#45633e]">
+                {member.userId || "ID unavailable"}
+              </span>
             </div>
           </div>
-
-          {/* Edit action */}
-          <div className="w-full shrink-0 sm:w-auto">
-            <Link
-              href="/dashboard/profile/edit"
-              className="group flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1c3324] px-5 text-xs font-semibold text-white shadow-[0_5px_14px_rgba(28,51,36,0.16)] transition hover:-translate-y-0.5 hover:bg-[#2d4d38] hover:shadow-lg sm:w-auto"
-            >
-              <Pencil size={14} />
-              Edit profile
-              <ArrowUpRight
-                size={14}
-                className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-              />
-            </Link>
-          </div>
         </div>
+
+        {/* Expand Button */}
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          aria-expanded={expanded}
+          aria-controls="profile-extra-info"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#dce8d7] bg-white/75 px-4 py-2.5 text-xs font-semibold text-[#45633e] transition hover:border-[#a8c69c] hover:bg-white"
+        >
+          {expanded ? "Show Less" : "View More Information"}
+
+          <motion.span
+            animate={{ rotate: expanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDown size={15} />
+          </motion.span>
+        </button>
+
+        {/* Expanded Information */}
+        <AnimatePresence initial={false}>
+          {expanded && (
+            <motion.div
+              id="profile-extra-info"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 space-y-3 border-t border-[#dce8d7] pt-4">
+                <div className="flex items-center gap-3 rounded-xl bg-white/70 p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf3e5] text-[#55784c]">
+                    <Mail size={16} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-[#82917e]">Email Address</p>
+                    <p className="truncate text-xs font-semibold text-[#1c3324]">
+                      {member.email || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-xl bg-white/70 p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf3e5] text-[#55784c]">
+                    <Phone size={16} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-[#82917e]">Mobile Number</p>
+                    <p className="text-xs font-semibold text-[#1c3324]">
+                      {member.mobile || "Not provided"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-xl bg-white/70 p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#eaf3e5] text-[#55784c]">
+                    <Hash size={16} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="text-[10px] text-[#82917e]">Member ID</p>
+                    <p className="text-xs font-semibold text-[#1c3324]">
+                      {member.userId || "Not available"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.section>
   );
