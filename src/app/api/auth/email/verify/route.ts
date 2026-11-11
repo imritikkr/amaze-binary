@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
     // Atomic update of user verification status and token consumption
     await prisma.$transaction([
-      prisma.user.update({
+      prisma.user.updateMany({
         where: { email: email.toLowerCase() },
         data: { emailVerified: true },
       }),
