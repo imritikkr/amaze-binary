@@ -102,12 +102,12 @@ const businessItems: MenuItem[] = [
     icon: Award,
     href: "/dashboard/rewards",
   },
-  {
-    label: "Activation Details",
-    description: "Membership activation information",
-    icon: BadgeCheck,
-    href: "/dashboard/activation",
-  },
+  // {
+  //   label: "Activation Details",
+  //   description: "Membership activation information",
+  //   icon: BadgeCheck,
+  //   href: "/dashboard/activation",
+  // },
 ];
 
 const preferenceItems: MenuItem[] = [

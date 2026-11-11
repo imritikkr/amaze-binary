@@ -256,9 +256,9 @@ export default function BankDetailsPage() {
     <main className="min-h-screen bg-[#f5f6f3] pb-28 sm:pb-10">
       {/* Header */}
 
-      <div className="mx-auto max-w-3xl space-y-4 px-2 py-2 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-3xl space-y-4 px-1  sm:px-6 sm:py-8">
         {/* Intro */}
-        <section className="flex items-center gap-3">
+        {/* <section className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => router.push("/dashboard/profile")}
@@ -279,7 +279,7 @@ export default function BankDetailsPage() {
                 : "View and manage your registered bank account."}
             </p>
           </div>
-        </section>
+        </section> */}
         {/* Bank Card */}
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.035)]">
           <div className="flex items-center gap-3 border-b border-gray-100 px-4 py-4">

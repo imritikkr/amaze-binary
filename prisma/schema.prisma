@@ -264,8 +264,9 @@ model Kyc {
   documents     KycDocument[]
   reviewHistory KycReviewHistory[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  submittedAt DateTime?
 }
 
 model KycDocument {

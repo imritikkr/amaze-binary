@@ -217,9 +217,9 @@ export default function AddressPage() {
     <main className="min-h-screen bg-[#f5f6f3] pb-28 sm:pb-10">
       {/* Mobile App Header */}
 
-      <div className="mx-auto max-w-3xl space-y-5 px-2 sm:px-6 sm:py-8">
+      <div className="mx-auto max-w-3xl space-y-5 px-1 sm:px-6 sm:py-8">
         {/* Intro */}
-        <section className="space-y-1.5 flex items-center gap-3">
+        {/* <section className="space-y-1.5 flex items-center gap-3">
           <button
             type="button"
             onClick={() => router.push("/dashboard/profile")}
@@ -239,7 +239,7 @@ export default function AddressPage() {
                 : "Manage your residential address."}
             </p>
           </div>
-        </section>
+        </section> */}
 
         {/* Address Card */}
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_12px_rgba(0,0,0,0.035)]">

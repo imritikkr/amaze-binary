@@ -134,39 +134,7 @@ export default function PersonalDetailsPage() {
 
   return (
     <main className="min-h-screen bg-[#f5f6f3] pb-28">
-      <div className="mx-auto max-w-xl space-y-5 px-4 py-5">
-        {/* Header */}
-        <section className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/dashboard/profile")}
-            aria-label="Back to profile"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm transition active:scale-95"
-          >
-            <ArrowLeft size={18} />
-          </button>
-
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold tracking-tight text-[#1c3324]">
-              Personal information
-            </h1>
-            <p className="mt-0.5 text-xs text-gray-500">
-              View and manage your personal details.
-            </p>
-          </div>
-
-          {!editing && (
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="flex h-9 items-center gap-1.5 rounded-full bg-[#1c3324] px-3 text-xs font-semibold text-white"
-            >
-              <UserRoundPen size={14} />
-              Edit
-            </button>
-          )}
-        </section>
-
+      <div className="mx-auto max-w-xl space-y-5">
         {/* Profile summary */}
         <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3">
