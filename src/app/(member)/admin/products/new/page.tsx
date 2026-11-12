@@ -652,7 +652,6 @@ export default function NewProductPage() {
                 <input
                   type="number"
                   min="0"
-                  step="1"
                   className={inputClass}
                   placeholder="50"
                   value={form.amzcoins}
