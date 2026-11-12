@@ -1,35 +1,28 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { motion } from "framer-motion";
 import {
-  UserRound,
-  MapPin,
-  Landmark,
-  ShieldCheck,
-  Bell,
-  Headset,
-  FileText,
-  ChevronRight,
-  Loader2,
-  CircleUserRound,
-  Network,
-  Wallet,
   Award,
+  ChevronRight,
+  CircleUserRound,
+  CoinsIcon,
+  FileText,
+  Headset,
+  Landmark,
   Link2,
+  Loader2,
   LockKeyhole,
-  Smartphone,
   LogOut,
+  MapPin,
+  Network,
+  ShieldCheck,
   ShoppingBag,
-  Settings,
-  Gift,
-  ClipboardList,
-  BadgeCheck,
-  CreditCard,
-  HelpCircle,
+  Smartphone,
+  UserRound,
+  Wallet,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { ProfileHeader } from "@/components/dashboard/profile/ProfileHeader";
@@ -224,44 +217,46 @@ function MenuSection({
 
 function ServiceTile({
   label,
-  description,
   icon: Icon,
   href,
   color = "green",
 }: {
   label: string;
-  description?: string;
   icon: React.ElementType;
   href: string;
   color?: "green" | "gold" | "blue";
 }) {
   const colors = {
-    green: "bg-[#eaf3e5] text-[#55784c]",
-    gold: "bg-[#fbf2df] text-[#b18436]",
-    blue: "bg-[#eaf2f8] text-[#4e7d9f]",
+    green: {
+      bg: "bg-[#edf4e9]",
+      icon: "text-[#3d6941]",
+    },
+    gold: {
+      bg: "bg-[#fbf3e3]",
+      icon: "text-[#ae812e]",
+    },
+    blue: {
+      bg: "bg-[#edf3f8]",
+      icon: "text-[#527d9c]",
+    },
   };
+
+  const theme = colors[color];
 
   return (
     <Link
       href={href}
-      className="group flex min-h-[96px] flex-col justify-between rounded-2xl border border-[#eff1ed] bg-white p-4 shadow-[0_4px_16px_rgba(28,51,36,0.045)] transition duration-200 hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+      className="group relative flex min-w-0 flex-col items-center justify-center gap-2 rounded-2xl border border-[#edf0e9] bg-white px-1.5 py-3 transition-all duration-200 hover:border-[#d6e3d0] hover:bg-[#fcfdfb] hover:shadow-[0_5px_16px_rgba(28,51,36,0.07)] active:scale-[0.96]"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#f1f6ed]">
-        <span
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors[color]}`}
-        >
-          <Icon size={21} strokeWidth={1.8} />
-        </span>
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-[14px] ${theme.bg} transition-transform duration-200 group-hover:-translate-y-0.5`}
+      >
+        <Icon size={20} strokeWidth={1.8} className={theme.icon} />
       </div>
 
-      <div className="mt-4">
-        <p className="text-xs font-bold leading-tight text-[#263329]">
-          {label}
-        </p>
-        {description && (
-          <p className="mt-1 text-[10px] text-gray-400">{description}</p>
-        )}
-      </div>
+      <span className="w-full truncate text-center text-[10px] font-semibold leading-tight text-[#344536] sm:text-xs">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -282,6 +277,8 @@ export default function ProfilePage() {
       });
 
       const data = await res.json();
+
+      console.log("Profile data:", data);
 
       if (!res.ok || !data.success) {
         throw new Error(data.message || "Unable to load profile");
@@ -369,7 +366,7 @@ export default function ProfilePage() {
             description="Your account at a glance"
           />
 
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-4 gap-2 sm:gap-3 lg:grid-cols-4">
             <ServiceTile
               label="My Network"
               icon={Network}
@@ -388,6 +385,11 @@ export default function ProfilePage() {
               label="My Orders"
               icon={ShoppingBag}
               href="/dashboard/orders"
+            />
+            <ServiceTile
+              label="AMZ Coins"
+              icon={CoinsIcon}
+              href="/dashboard/coins"
             />
           </div>
         </section>

@@ -17,6 +17,7 @@ export function computeProfileCompletion(user: {
   fatherName: string | null;
   dateOfBirth?: Date | string | null;
   gender: string | null;
+  avatarUrl?: string | null;
 
   mobile: string;
   phoneVerified: boolean;
@@ -87,6 +88,7 @@ export async function GET() {
       select: {
         id: true,
         userId: true,
+        avatarUrl: true,
         name: true,
         fatherName: true,
         dateOfBirth: true,

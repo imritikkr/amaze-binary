@@ -55,7 +55,6 @@ export const ourFileRouter = {
       };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // Persist the private object key, never a public URL.
       await prisma.kycDocument.create({
         data: {
           kycId: metadata.kycId,
@@ -69,6 +68,37 @@ export const ourFileRouter = {
       return {
         documentType: metadata.documentType,
         uploaded: true,
+      };
+    }),
+
+  profileImage: f({
+    image: {
+      maxFileSize: "2MB",
+      maxFileCount: 1,
+    },
+  })
+    .middleware(async () => {
+      const session = await getSession();
+
+      if (!session?.userId) {
+        throw new UploadThingError("Please login to upload your photo.");
+      }
+
+      return {
+        userId: session.userId,
+      };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      await prisma.user.update({
+        where: { id: metadata.userId },
+        data: {
+          avatarUrl: file.ufsUrl,
+        },
+      });
+
+      return {
+        uploaded: true,
+        avatarUrl: file.ufsUrl,
       };
     }),
 } satisfies FileRouter;

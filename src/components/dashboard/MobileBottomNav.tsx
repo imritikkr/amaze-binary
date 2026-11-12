@@ -21,6 +21,7 @@ import {
   HelpCircle,
   LogOut,
   ChevronRight,
+  ShoppingBagIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -32,6 +33,8 @@ export function MobileBottomNav({ unreadCount = 0 }: { unreadCount?: number }) {
 
   const primaryItems = [
     { label: "Home", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Shop", href: "/dashboard/shop", icon: ShoppingBagIcon },
+
     { label: "Team", href: "/dashboard/team", icon: Users },
     { label: "Wallet", href: "/dashboard/wallet", icon: Wallet },
     { label: "Profile", href: "/dashboard/profile", icon: User },
@@ -126,93 +129,10 @@ export function MobileBottomNav({ unreadCount = 0 }: { unreadCount?: number }) {
           })}
 
           {/* 5th Item: More Menu Drawer Trigger */}
-          <button
-            type="button"
-            onClick={() => setMoreOpen(!moreOpen)}
-            className="flex flex-col items-center justify-center py-1 text-[#777f76] transition-transform active:scale-95"
-          >
-            <div
-              className={`p-1 rounded-xl ${moreOpen ? "text-[#e8a020]" : "text-[#777f76]"}`}
-            >
-              {moreOpen ? <X size={20} /> : <Menu size={20} />}
-            </div>
-            <span
-              className={`text-[10px] tracking-tight ${moreOpen ? "font-bold text-[#e8a020]" : "font-medium"}`}
-            >
-              More
-            </span>
-          </button>
         </div>
       </nav>
 
       {/* Accessible More Menu Slide-Up Sheet */}
-      <AnimatePresence>
-        {moreOpen && (
-          <div className="fixed inset-0 z-40 md:hidden">
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMoreOpen(false)}
-              className="absolute inset-0 bg-black/50 backdrop-blur-xs"
-            />
-
-            {/* Bottom Sheet */}
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 280 }}
-              className="absolute inset-x-0 bottom-[64px] max-h-[75vh] overflow-y-auto rounded-t-3xl border-t border-[#e8e8df] bg-[#f8f7f1] p-5 shadow-2xl"
-            >
-              <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-[#dce3d8]" />
-
-              <h3 className="text-xs font-bold uppercase tracking-widest text-[#777f76] mb-3 px-2">
-                All Operations & Tools
-              </h3>
-
-              <div className="grid grid-cols-1 gap-1.5 bg-white rounded-2xl p-2 border border-[#e8e8df] shadow-xs">
-                {secondaryMenu.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname.startsWith(item.href);
-
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMoreOpen(false)}
-                      className={`flex items-center justify-between p-3 rounded-xl text-xs font-semibold transition-colors ${
-                        isActive
-                          ? "bg-[#edf2e9] text-[#1c3324]"
-                          : "text-[#202820] hover:bg-[#f8f7f1]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-1.5 rounded-lg bg-[#f8f7f1] text-[#1c3324]">
-                          <Icon size={16} />
-                        </div>
-                        <span>{item.label}</span>
-                      </div>
-                      <ChevronRight size={14} className="text-[#777f76]" />
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-red-50 text-red-600 font-semibold text-xs border border-red-200"
-                >
-                  <LogOut size={15} /> Log Out from Account
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </>
   );
 }

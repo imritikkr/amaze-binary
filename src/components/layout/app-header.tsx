@@ -264,8 +264,8 @@ export const AppHeader = () => {
                     src="/amaze-logo.png"
                     alt="Amaze Ayurveda"
                     fill
-                    sizes="40px"
-                    className="object-contain p-1.5"
+                    sizes="(max-width: 640px) 120px, 160px"
+                    className="object-contain"
                   />
                 </div>
                 <div>
