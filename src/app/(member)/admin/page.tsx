@@ -17,8 +17,7 @@ import {
   Tags,
   Users,
 } from "lucide-react";
-
-// export const dynamic = "force-dynamic";
+import { connection } from "next/server";
 
 function formatDate(date: Date) {
   return new Intl.DateTimeFormat("en-IN", {
@@ -37,6 +36,7 @@ function formatCurrency(amount: number) {
 }
 
 export default async function AdminDashboardPage() {
+  await connection();
   // Authentication and authorization
   const session = await getSession();
 
