@@ -101,6 +101,44 @@ export const ourFileRouter = {
         avatarUrl: file.ufsUrl,
       };
     }),
+
+  // product uplaod
+  productImage: f({
+    image: {
+      maxFileSize: "4MB",
+      maxFileCount: 8,
+    },
+  })
+    .middleware(async () => {
+      const session = await getSession();
+
+      if (!session?.userId) {
+        throw new UploadThingError("Please login.");
+      }
+
+      if (
+        !["ADMIN", "SUPER_ADMIN"].includes(session.user.role) ||
+        session.user.accountStatus !== "ACTIVE"
+      ) {
+        throw new UploadThingError(
+          "You are not authorized to upload product images.",
+        );
+      }
+
+      return {
+        userId: session.userId,
+      };
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      return {
+        uploaded: true,
+        uploadedBy: metadata.userId,
+        url: file.ufsUrl,
+        key: file.key,
+        size: file.size,
+        mimeType: file.type,
+      };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

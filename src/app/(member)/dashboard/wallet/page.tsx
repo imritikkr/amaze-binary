@@ -405,28 +405,6 @@ export default function WalletPage() {
 
       {/* BALANCE INFORMATION */}
 
-      <section className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-gray-100 bg-white p-4">
-          <p className="text-xs text-gray-500">Shopping Balance</p>
-          <p className="mt-2 text-lg font-bold text-[#1c3324]">
-            {formatMoney(wallet.shoppingBalancePaise)}
-          </p>
-          <p className="mt-1 text-[11px] text-gray-400">
-            For eligible purchases
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-gray-100 bg-white p-4">
-          <p className="text-xs text-gray-500">Withdrawable Earnings</p>
-          <p className="mt-2 text-lg font-bold text-green-700">
-            {formatMoney(wallet.earningsBalancePaise)}
-          </p>
-          <p className="mt-1 text-[11px] text-gray-400">
-            Subject to withdrawal rules
-          </p>
-        </div>
-      </section>
-
       {/* TRANSACTIONS */}
 
       <section

@@ -76,7 +76,7 @@ export default function LoginPage() {
           result.user?.role === "SUPER_ADMIN" ||
           result.user?.role === "ADMIN"
         ) {
-          router.replace("/admin/members");
+          router.replace("/admin");
         } else {
           router.replace("/dashboard");
         }
