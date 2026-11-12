@@ -87,6 +87,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   wallet    Wallet?
+  cart      Cart?
+  orders    Order[]
 
   @@index([sponsorId])
   @@index([accountStatus])
@@ -434,8 +436,10 @@ model Product {
   bogoEligibleProducts  ProductBogoEligibleProduct[] @relation("BogoMainProduct")
   eligibleAsFreeProduct ProductBogoEligibleProduct[] @relation("BogoFreeProduct")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   @@index([status, createdAt])
   @@index([categoryId, status])
@@ -483,4 +487,177 @@ model Category {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String     @unique @db.ObjectId
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String   @db.ObjectId
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String   @db.ObjectId
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@index([productId])
+}
+
+// 
+enum FulfillmentMethod {
+  STORE_PICKUP
+  HOME_DELIVERY
+}
+
+enum OrderPaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  CASHFREE
+  PHONEPE
+  MANUAL
+}
+
+type OrderAddress {
+  recipientName String
+  mobile        String
+  addressLine   String
+  district      String
+  state         String
+  pinCode       String
+  country       String @default("India")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model Order {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber String @unique
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id])
+
+  items OrderItem[]
+
+  fulfillmentMethod FulfillmentMethod
+  deliveryAddress   OrderAddress?
+
+  subtotal       Int
+  shippingCharge Int @default(0)
+  totalAmount    Int
+
+  paymentStatus OrderPaymentStatus @default(PENDING)
+  status        OrderStatus        @default(PENDING)
+
+  payment Payment?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  storeId String? @db.ObjectId
+  store   Store?  @relation(fields: [storeId], references: [id])
+
+  pickupStoreName    String?
+  pickupStoreContact String?
+  pickupStoreAddress String?
+
+  @@index([userId, createdAt])
+  @@index([paymentStatus])
+}
+
+model OrderItem {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId String @db.ObjectId
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String  @db.ObjectId
+  product   Product @relation(fields: [productId], references: [id])
+
+  productName  String
+  sku          String
+  quantity     Int
+  freeQuantity Int    @default(0)
+
+  unitPrice Int
+  mrp       Int
+  amzcoins  Float @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}
+
+model Payment {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  orderId String @unique @db.ObjectId
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  provider          PaymentProvider
+  providerOrderId   String?
+  providerPaymentId String?
+  amount            Int
+  currency          String             @default("INR")
+  status            OrderPaymentStatus @default(PENDING)
+
+  idempotencyKey String  @unique
+  rawResponse    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([providerPaymentId])
+}
+
+model Store {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  name             String
+  code             String  @unique
+  ownerName        String
+  contactNumber    String
+  alternateContact String?
+  email            String?
+
+  addressLine String
+  landmark    String?
+  city        String
+  district    String
+  state       String
+  pinCode     String
+  country     String  @default("India")
+
+  latitude  Float?
+  longitude Float?
+
+  openingHours String?
+  instructions String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive, city])
+  @@index([district, state])
 }

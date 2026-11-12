@@ -53,6 +53,11 @@ const navigation = [
         href: "/admin/members",
         icon: Users,
       },
+      {
+        label: "Stores & Pickup Locations",
+        href: "/admin/stores",
+        icon: Package,
+      },
     ],
   },
   {
