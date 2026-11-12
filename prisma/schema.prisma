@@ -417,7 +417,7 @@ model Product {
 
   maxRetailPrice   Int
   distributorPrice Int
-  amzcoins         Int
+  amzcoins         Float
 
   stockQuantity     Int @default(0)
   lowStockThreshold Int @default(5)
