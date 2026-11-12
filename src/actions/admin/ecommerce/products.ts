@@ -22,7 +22,15 @@ const productSchema = z
 
     maxRetailPrice: z.number().int().min(1),
     distributorPrice: z.number().int().min(1),
-    amzcoins: z.number().int().min(0),
+    // amzcoins: z.number().float().min(0),
+    amzcoins: z
+      .number()
+      .finite()
+      .min(0, "Amaze Coins cannot be negative")
+      .refine(
+        (value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8,
+        "Amaze Coins can have up to 2 decimal places",
+      ),
 
     stockQuantity: z.number().int().min(0),
     lowStockThreshold: z.number().int().min(0),

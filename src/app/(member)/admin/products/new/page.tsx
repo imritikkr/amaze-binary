@@ -55,7 +55,7 @@ const initialForm = {
   maxRetailPrice: "",
   distributorPrice: "",
   amzcoins: "",
-  stockQuantity: "0",
+  stockQuantity: "100",
   lowStockThreshold: "5",
   categoryId: "",
   status: "DRAFT" as ProductStatus,
@@ -276,15 +276,39 @@ export default function NewProductPage() {
       return;
     }
 
+    // if (
+    //   !Number.isInteger(coins) ||
+    //   coins < 0 ||
+    //   !Number.isInteger(stock) ||
+    //   stock < 0 ||
+    //   !Number.isInteger(lowStock) ||
+    //   lowStock < 0
+    // ) {
+    //   toast.error("Enter valid whole numbers for coins and stock.");
+    //   return;
+    // }
+    const coinsInput = form.amzcoins.trim();
+
     if (
-      !Number.isInteger(coins) ||
-      coins < 0 ||
+      !/^\d+(\.\d{1,2})?$/.test(coinsInput) ||
+      !Number.isFinite(coins) ||
+      coins < 0
+    ) {
+      toast.error(
+        "Amaze Coins must be non-negative with up to 2 decimal places.",
+      );
+      return;
+    }
+
+    if (
       !Number.isInteger(stock) ||
       stock < 0 ||
       !Number.isInteger(lowStock) ||
       lowStock < 0
     ) {
-      toast.error("Enter valid whole numbers for coins and stock.");
+      toast.error(
+        "Stock and low stock threshold must be non-negative whole numbers.",
+      );
       return;
     }
 
@@ -652,8 +676,10 @@ export default function NewProductPage() {
                 <input
                   type="number"
                   min="0"
+                  step="0.01"
+                  max="1000"
                   className={inputClass}
-                  placeholder="50"
+                  placeholder="0.5"
                   value={form.amzcoins}
                   onChange={(e) => updateField("amzcoins", e.target.value)}
                   required
