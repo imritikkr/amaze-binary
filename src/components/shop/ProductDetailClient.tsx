@@ -199,19 +199,19 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         </nav>
 
         {/* Main 2-Column Product Showcase */}
-        <section className="grid gap-8 rounded-3xl border border-[#e5e9df] bg-white p-4 shadow-[0_8px_30px_rgba(28,51,36,0.04)] sm:p-7 lg:grid-cols-[1.02fr_0.98fr] lg:gap-12 lg:p-10">
-          {/* Left: Animated multi-image product gallery */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="group relative aspect-square w-full overflow-hidden rounded-2xl border border-[#edf2e9] bg-[#f6f8f4] sm:rounded-3xl">
-              <AnimatePresence mode="wait">
+        <section className="grid min-w-0 grid-cols-1 gap-6 overflow-hidden rounded-3xl border border-[#e5e9df] bg-white p-3 shadow-[0_8px_30px_rgba(28,51,36,0.04)] sm:gap-8 sm:p-7 lg:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)] lg:gap-12 lg:p-10">
+          {/* Left: Fixed square, overflow-safe animated product gallery */}
+          <div className="w-full min-w-0 space-y-3 sm:space-y-4">
+            <div className="relative isolate block aspect-square w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-[#edf2e9] bg-[#f6f8f4] sm:rounded-3xl">
+              <AnimatePresence initial={false} mode="wait">
                 {activeImage ? (
                   <motion.div
                     key={activeImage}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.985 }}
-                    transition={{ duration: 0.28, ease: "easeOut" }}
-                    className="absolute inset-0"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    className="absolute inset-0 h-full w-full overflow-hidden"
                   >
                     <Image
                       src={activeImage}
@@ -220,29 +220,25 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                       }
                       fill
                       priority
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      className="object-contain p-5 sm:p-10"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
+                      className="!absolute !inset-0 !h-full !w-full max-h-full max-w-full object-contain"
                     />
                   </motion.div>
                 ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-[#55784c]/40">
-                    <Leaf size={56} />
-                    <span className="text-xs font-semibold">
-                      Amaze Ayurveda
-                    </span>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Leaf size={48} className="text-[#55784c]/40" />
                   </div>
                 )}
               </AnimatePresence>
 
-              <div className="absolute left-3 top-3 z-10 flex flex-wrap gap-2 sm:left-5 sm:top-5">
+              <div className="pointer-events-none absolute left-3 top-3 z-20 flex flex-wrap gap-2 sm:left-5 sm:top-5">
                 {discountPct > 0 && (
-                  <span className="rounded-full bg-[#1c3324] px-3 py-1.5 text-[10px] font-extrabold text-white shadow-sm sm:text-xs">
+                  <span className="rounded-full bg-[#1c3324] px-3 py-1.5 text-[10px] font-extrabold text-white shadow-sm">
                     {discountPct}% OFF
                   </span>
                 )}
                 {product.bogoEnabled && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#b68a36] px-3 py-1.5 text-[10px] font-extrabold text-white shadow-sm sm:text-xs">
-                    <Gift size={13} />
+                  <span className="rounded-full bg-[#b68a36] px-3 py-1.5 text-[10px] font-bold text-white shadow-sm">
                     BOGO Offer
                   </span>
                 )}
@@ -252,7 +248,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 type="button"
                 onClick={handleShare}
                 aria-label="Share product"
-                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-[#e5e9df] bg-white/90 text-[#1c3324] shadow-sm backdrop-blur-md transition hover:bg-[#1c3324] hover:text-white sm:right-5 sm:top-5 sm:h-10 sm:w-10"
+                className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[#1c3324] shadow-sm transition hover:bg-[#1c3324] hover:text-white"
               >
                 <Share2 size={16} />
               </button>
@@ -261,7 +257,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <>
                   <button
                     type="button"
-                    aria-label="Previous product image"
+                    aria-label="Previous image"
                     onClick={() =>
                       setSelectedImageIdx(
                         (i) =>
@@ -269,32 +265,31 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                           product.images.length,
                       )
                     }
-                    className="absolute left-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1c3324] shadow-md transition hover:bg-[#1c3324] hover:text-white sm:left-4 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute left-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1c3324] shadow-md transition hover:bg-[#1c3324] hover:text-white"
                   >
                     <ArrowLeft size={16} />
                   </button>
                   <button
                     type="button"
-                    aria-label="Next product image"
+                    aria-label="Next image"
                     onClick={() =>
                       setSelectedImageIdx(
                         (i) => (i + 1) % product.images.length,
                       )
                     }
-                    className="absolute right-2 top-1/2 z-10 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1c3324] shadow-md transition hover:bg-[#1c3324] hover:text-white sm:right-4 sm:opacity-0 sm:group-hover:opacity-100"
+                    className="absolute right-2 top-1/2 z-30 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#1c3324] shadow-md transition hover:bg-[#1c3324] hover:text-white"
                   >
                     <ArrowRight size={16} />
                   </button>
-                  <span className="absolute bottom-3 right-3 z-10 rounded-full bg-[#1c3324]/80 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur">
+                  <span className="pointer-events-none absolute bottom-3 right-3 z-20 rounded-full bg-[#1c3324]/80 px-3 py-1 text-[10px] font-semibold text-white">
                     {selectedImageIdx + 1} / {product.images.length}
                   </span>
                 </>
               )}
             </div>
 
-            {/* Scrollable image thumbnails */}
             {product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto px-0.5 pb-2">
+              <div className="flex w-full min-w-0 gap-2 overflow-x-auto overscroll-x-contain px-0.5 pb-2">
                 {product.images.map((img, idx) => (
                   <button
                     key={img.id}
@@ -314,7 +309,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                       alt={img.alt || `${product.name} image ${idx + 1}`}
                       fill
                       sizes="80px"
-                      className="object-contain p-2"
+                      className="!absolute !inset-0 !h-full !w-full object-contain"
                     />
                   </button>
                 ))}
@@ -323,7 +318,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           </div>
 
           {/* Right: Product Info, DP/MRP Pricing & Purchase Controls */}
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <div className="flex flex-wrap items-center gap-2">
               {product.category && (
                 <Link
@@ -643,14 +638,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   href={`/shop/${rel.slug}`}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-[#e5e9df] bg-white p-3.5 shadow-2xs transition hover:-translate-y-1 hover:shadow-md"
                 >
-                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#f4f7f0]">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-[#f4f7f0]">
                     {rel.image ? (
                       <Image
                         src={rel.image}
                         alt={rel.name}
                         fill
                         sizes="(max-width: 640px) 100vw, 25vw"
-                        className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                        className="object-contain p-4 transition-transform duration-500 group-hover:scale-105 rounded-sm"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-[#55784c]/40">
@@ -691,7 +686,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         <div className="flex items-center gap-2">
           {/* Product image and price */}
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#e5e9df] bg-[#f5f7f2]">
+            <div className="relative  aspect-square h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[#e5e9df] bg-[#f5f7f2]">
               {product.images[0]?.url && (
                 <Image
                   src={product.images[0].url}
