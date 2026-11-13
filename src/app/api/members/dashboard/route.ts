@@ -2,8 +2,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
-import { computeProfileCompletion } from "@/app/api/members/profile/route";
 import { BinaryPosition } from "@/types/binary";
+import { evaluateAndSyncMemberActivation } from "@/lib/member/activation";
 
 export async function GET() {
   const session = await getSession();
@@ -16,28 +16,39 @@ export async function GET() {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: {
-        id: true,
-        userId: true,
-        name: true,
-        fatherName: true,
-        gender: true,
-        dateOfBirth: true,
-        mobile: true,
-        phoneVerified: true,
-        email: true,
-        emailVerified: true,
-        role: true,
-        accountStatus: true,
-        kycStatus: true,
-        activationStatus: true,
-        address: true,
-        bankDetails: true,
-        createdAt: true,
-      },
-    });
+    // 1. Evaluate activation eligibility (syncs activationStatus in DB) & fetch user profile in parallel
+    const [activation, user] = await Promise.all([
+      evaluateAndSyncMemberActivation(session.userId),
+      prisma.user.findUnique({
+        where: { id: session.userId },
+        select: {
+          id: true,
+          userId: true,
+          name: true,
+          avatarUrl: true,
+          fatherName: true,
+          gender: true,
+          dateOfBirth: true,
+          mobile: true,
+          phoneVerified: true,
+          email: true,
+          emailVerified: true,
+          role: true,
+          accountStatus: true,
+          kycStatus: true,
+          activationStatus: true,
+          address: true,
+          bankDetails: true,
+          createdAt: true,
+          wallet: {
+            select: {
+              shoppingBalancePaise: true,
+              earningsBalancePaise: true,
+            },
+          },
+        },
+      }),
+    ]);
 
     if (!user) {
       return NextResponse.json(
@@ -46,7 +57,7 @@ export async function GET() {
       );
     }
 
-    // 1. Direct referrals & binary placement in parallel
+    // 2. Direct referrals & binary placement in parallel
     const [directReferrals, userPlacement] = await Promise.all([
       prisma.user.findMany({
         where: { sponsorId: user.id },
@@ -80,11 +91,10 @@ export async function GET() {
       }),
     ]);
 
-    // 2. Resolve Left and Right team counts
+    // 3. Resolve Left and Right team counts
     let leftCount = userPlacement?.leftCount ?? 0;
     let rightCount = userPlacement?.rightCount ?? 0;
 
-    // If cached counters are 0 but children exist, compute live subtree counts
     if (
       userPlacement &&
       userPlacement.children.length > 0 &&
@@ -127,9 +137,6 @@ export async function GET() {
 
     const totalTeamCount = leftCount + rightCount;
 
-    // 3. Profile completion percentage
-    const completionRate = computeProfileCompletion(user);
-
     // 4. Notifications count (placeholder for alerts module)
     const unreadNotificationsCount = 0;
 
@@ -142,20 +149,23 @@ export async function GET() {
           firstName: user.name.split(" ")[0] || user.name,
           mobile: user.mobile,
           email: user.email,
-          avatarUrl: null,
+          avatarUrl: user.avatarUrl ?? null,
           accountStatus: user.accountStatus,
-          activationStatus: user.activationStatus,
+          activationStatus:
+            activation?.activationStatus ?? user.activationStatus,
           kycStatus: user.kycStatus,
           joinedAt: user.createdAt,
-          completionRate,
+          completionRate:
+            activation?.criteria.profileComplete.completionRate ?? 0,
         },
+        activation,
         metrics: {
           directReferralsCount: directReferrals.length,
           totalTeamCount,
           leftTeamCount: leftCount,
           rightTeamCount: rightCount,
-          walletBalance: 0,
-          totalEarnings: 0,
+          walletBalance: (user.wallet?.shoppingBalancePaise ?? 0) / 100,
+          totalEarnings: (user.wallet?.earningsBalancePaise ?? 0) / 100,
           leftBv: userPlacement?.leftBv ?? 0,
           rightBv: userPlacement?.rightBv ?? 0,
         },

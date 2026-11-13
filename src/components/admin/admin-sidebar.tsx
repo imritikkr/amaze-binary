@@ -54,9 +54,14 @@ const navigation = [
         icon: Users,
       },
       {
-        label: "Stores & Pickup Locations",
+        label: "Stores",
         href: "/admin/stores",
         icon: Package,
+      },
+      {
+        label: "KYC Verification",
+        href: "/admin/kyc",
+        icon: ShieldCheck,
       },
     ],
   },

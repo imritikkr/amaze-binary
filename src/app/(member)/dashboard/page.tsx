@@ -14,6 +14,7 @@ import {
 import { ProfileCompletion } from "@/components/dashboard/profile/ProfileCompletion";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ActivationChecklistCard } from "@/components/dashboard/ActivationChecklistCard";
 
 export default function DashboardHomePage() {
   const [data, setData] = useState<any>(null);
@@ -57,6 +58,8 @@ export default function DashboardHomePage() {
     <div className="space-y-6">
       {/* 1. Welcome Card */}
       <WelcomeCard profile={data.profile} />
+
+      <ActivationChecklistCard activation={data.activation} />
 
       {/* 2. Top Metric Cards */}
       <MetricCards metrics={data.metrics} />
