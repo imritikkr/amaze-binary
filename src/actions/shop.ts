@@ -318,3 +318,178 @@ export async function getCartCountServer(): Promise<number> {
     return 0;
   }
 }
+
+// Add to src/actions/shop.ts
+
+export type ProductDetailData = {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string;
+  shortDescription: string | null;
+  description: string | null;
+  price: number; // distributorPrice
+  mrp: number; // maxRetailPrice
+  bv: number; // amzcoins
+  stock: number; // stockQuantity
+  lowStockThreshold: number;
+  bogoEnabled: boolean;
+  bogoFreeProducts: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    mrp: number;
+    image: string | null;
+  }>;
+  images: Array<{
+    id: string;
+    url: string;
+    alt: string;
+    isPrimary: boolean;
+  }>;
+  category: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  relatedProducts: ShopProductItem[];
+};
+
+export async function getProductBySlug(
+  slug: string,
+): Promise<{ success: boolean; product: ProductDetailData | null }> {
+  try {
+    const cleanSlug = decodeURIComponent(slug || "").trim();
+    if (!cleanSlug) return { success: false, product: null };
+
+    const raw = await prisma.product.findUnique({
+      where: { slug: cleanSlug },
+      include: {
+        images: {
+          orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+        },
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        bogoEligibleProducts: {
+          include: {
+            freeProduct: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                maxRetailPrice: true,
+                status: true,
+                images: {
+                  orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+                  take: 1,
+                  select: { url: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!raw || raw.status !== ProductStatus.ACTIVE) {
+      return { success: false, product: null };
+    }
+
+    // Fetch up to 4 related products in the same category (or other active products)
+    const relatedRaw = await prisma.product.findMany({
+      where: {
+        status: ProductStatus.ACTIVE,
+        id: { not: raw.id },
+        ...(raw.categoryId ? { categoryId: raw.categoryId } : {}),
+      },
+      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      take: 4,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        sku: true,
+        shortDescription: true,
+        description: true,
+        maxRetailPrice: true,
+        distributorPrice: true,
+        amzcoins: true,
+        stockQuantity: true,
+        bogoEnabled: true,
+        isFeatured: true,
+        images: {
+          orderBy: [{ isPrimary: "desc" }, { position: "asc" }],
+          take: 1,
+          select: { url: true },
+        },
+        category: {
+          select: { id: true, name: true, slug: true },
+        },
+      },
+    });
+
+    const relatedProducts: ShopProductItem[] = relatedRaw.map((p) => {
+      const desc = p.shortDescription || p.description || "";
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        sku: p.sku,
+        shortDescription: desc
+          ? desc.slice(0, 110) + (desc.length > 110 ? "..." : "")
+          : "Authentic Ayurvedic formulation crafted for daily wellness.",
+        price: p.distributorPrice,
+        mrp: p.maxRetailPrice,
+        bv: p.amzcoins,
+        stock: p.stockQuantity,
+        bogoEnabled: p.bogoEnabled,
+        isFeatured: p.isFeatured,
+        image: p.images[0]?.url ?? null,
+        category: p.category,
+      };
+    });
+
+    return {
+      success: true,
+      product: {
+        id: raw.id,
+        name: raw.name,
+        slug: raw.slug,
+        sku: raw.sku,
+        shortDescription: raw.shortDescription,
+        description: raw.description,
+        price: raw.distributorPrice,
+        mrp: raw.maxRetailPrice,
+        bv: raw.amzcoins,
+        stock: raw.stockQuantity,
+        lowStockThreshold: raw.lowStockThreshold,
+        bogoEnabled: raw.bogoEnabled,
+        bogoFreeProducts: raw.bogoEligibleProducts
+          .filter((b) => b.freeProduct.status === ProductStatus.ACTIVE)
+          .map((b) => ({
+            id: b.freeProduct.id,
+            name: b.freeProduct.name,
+            slug: b.freeProduct.slug,
+            mrp: b.freeProduct.maxRetailPrice,
+            image: b.freeProduct.images[0]?.url ?? null,
+          })),
+        images: raw.images.map((img) => ({
+          id: img.id,
+          url: img.url,
+          alt: img.alt || raw.name,
+          isPrimary: img.isPrimary,
+        })),
+        category: raw.category,
+        relatedProducts,
+      },
+    };
+  } catch (error) {
+    console.error("getProductBySlug error:", error);
+    return { success: false, product: null };
+  }
+}

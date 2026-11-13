@@ -333,11 +333,9 @@ const Hero = ({ featuredProducts = [], categories = [] }: HeroProps) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#55784c]/20 bg-white/80 px-4 py-2 text-[9px] font-bold uppercase tracking-[0.18em] text-[#55784c] shadow-sm backdrop-blur-xl sm:text-[10px]">
+            <span className=" inline-flex items-center gap-2 rounded-full border border-[#55784c]/20 bg-white/80 px-4 py-2 text-[9px] font-bold uppercase  text-[#55784c] shadow-sm backdrop-blur-xl sm:text-[10px]">
               <Sparkles size={13} className="text-[#b78a37]" />
               Wellness Rooted in Nature
-              <span className="text-[#b78a37]">•</span>
-              Growth Without Limits
             </span>
           </motion.div>
 
