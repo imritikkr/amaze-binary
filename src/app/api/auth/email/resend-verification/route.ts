@@ -1,7 +1,6 @@
 // src/app/api/auth/email/resend-verification/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmailVerificationLink } from "@/lib/resend/verification";
 import { rateLimit, getClientIp } from "@/lib/auth/rate-limit";
 
 export async function POST(req: NextRequest) {
@@ -48,8 +47,6 @@ export async function POST(req: NextRequest) {
         message: "Email is already verified. You can log in.",
       });
     }
-
-    await sendEmailVerificationLink(email.toLowerCase(), user.name);
 
     return NextResponse.json({
       success: true,

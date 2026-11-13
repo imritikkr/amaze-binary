@@ -1,66 +1,150 @@
 // src/app/api/auth/verify-reset-otp/route.ts
 import crypto from "crypto";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { adminAuth } from "@/lib/firebase/admin";
-import { verifyResetOtpSchema } from "@/modules/validators/auth.schema";
-import { hashToken } from "@/lib/auth/session";
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const parsed = verifyResetOtpSchema.safeParse(body);
-    if (!parsed.success) {
+    const { userJsonUrl, mobile } = body as {
+      userJsonUrl?: string;
+      mobile?: string;
+    };
+
+    if (!userJsonUrl || typeof userJsonUrl !== "string") {
       return NextResponse.json(
-        { success: false, message: parsed.error.issues[0].message },
+        { success: false, message: "Missing verification URL." },
         { status: 400 },
       );
     }
 
-    const { firebaseIdToken, mobile } = parsed.data;
-    const decodedToken = await adminAuth.verifyIdToken(firebaseIdToken);
-    const tokenPhone = decodedToken.phone_number?.replace(/\D/g, "");
-
-    if (!tokenPhone || !tokenPhone.endsWith(mobile)) {
+    // 1. Validate Phone.Email host strictly
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(userJsonUrl);
+    } catch {
       return NextResponse.json(
-        { success: false, message: "Phone verification mismatch" },
+        { success: false, message: "Malformed verification URL." },
         { status: 400 },
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { mobile } });
+    if (
+      parsedUrl.protocol !== "https:" ||
+      parsedUrl.hostname !== "user.phone.email"
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Untrusted verification source." },
+        { status: 400 },
+      );
+    }
+
+    // 2. Fetch verified phone number server-side
+    const peRes = await fetch(parsedUrl.toString(), {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!peRes.ok) {
+      return NextResponse.json(
+        { success: false, message: "Failed to verify OTP session." },
+        { status: 400 },
+      );
+    }
+
+    const peData = (await peRes.json()) as {
+      user_country_code?: string;
+      user_phone_number?: string;
+    };
+
+    const countryCode = (peData.user_country_code || "").replace(/\D/g, "");
+    const verified10Digit = (peData.user_phone_number || "")
+      .replace(/\D/g, "")
+      .slice(-10);
+
+    if (
+      (countryCode && countryCode !== "91") ||
+      !/^[6-9]\d{9}$/.test(verified10Digit)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Invalid Indian mobile number verified." },
+        { status: 400 },
+      );
+    }
+
+    if (mobile && mobile.replace(/\D/g, "").slice(-10) !== verified10Digit) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Verified mobile number does not match the entered number.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // 3. Find registered member
+    const user = await prisma.user.findUnique({
+      where: { mobile: verified10Digit },
+      select: { id: true, accountStatus: true },
+    });
+
     if (!user) {
       return NextResponse.json(
-        { success: false, message: "Account not found" },
+        {
+          success: false,
+          message: "No account found with this mobile number.",
+        },
         { status: 404 },
       );
     }
 
-    // Invalidate prior reset tokens
-    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+    if (
+      user.accountStatus === "TERMINATED" ||
+      user.accountStatus === "SUSPENDED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Account is suspended or terminated. Contact support.",
+        },
+        { status: 403 },
+      );
+    }
 
-    // Issue 15-minute reset authorization token
-    const rawResetToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = hashToken(rawResetToken);
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    // 4. Issue single-use PasswordResetToken (valid for 15 minutes)
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(rawToken)
+      .digest("hex");
 
-    await prisma.passwordResetToken.create({
-      data: {
-        userId: user.id,
-        tokenHash,
-        expiresAt,
-      },
-    });
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 15 * 60 * 1000);
+
+    await prisma.$transaction([
+      prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, consumedAt: null },
+        data: { consumedAt: now },
+      }),
+      prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash,
+          expiresAt,
+          consumedAt: null,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       success: true,
-      resetAuthorizationToken: rawResetToken,
+      resetAuthorizationToken: rawToken,
     });
   } catch (error) {
-    console.error("Verify OTP Reset Error:", error);
+    console.error("verify-reset-otp error:", error);
     return NextResponse.json(
-      { success: false, message: "Token verification failed" },
-      { status: 400 },
+      { success: false, message: "Internal server error." },
+      { status: 500 },
     );
   }
 }
