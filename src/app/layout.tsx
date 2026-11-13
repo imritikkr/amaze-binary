@@ -10,6 +10,8 @@ const sora = Sora({
 });
 
 import { Toaster } from "sonner";
+import { AppHeader } from "@/components/layout/app-header";
+import { Footer } from "@/components/layout/footer";
 
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.yourdomain.com";
 
@@ -101,7 +103,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${sora.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
+        <AppHeader />
         {children}
+        <Footer />
         <Toaster
           position="top-right"
           richColors
