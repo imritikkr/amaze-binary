@@ -1,3 +1,4 @@
+// src/app/dashboard/profile/personal/page.tsx
 "use client";
 
 import Image from "next/image";
@@ -19,11 +20,19 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing";
+import type { ClientUploadedFileData } from "uploadthing/types";
 
 import {
   updateMemberPersonalDetails,
   type PersonalInput,
 } from "@/actions/profile/personal";
+
+import {
+  getVerificationStatus,
+  sendEmailOtp,
+  verifyEmailOtp,
+  verifyPhoneWithPhoneEmail,
+} from "@/actions/verification";
 
 type PersonalDetails = {
   name: string;
@@ -43,13 +52,16 @@ const emptyDetails: PersonalDetails = {
   email: "",
 };
 
-import type { ClientUploadedFileData } from "uploadthing/types";
+declare global {
+  interface Window {
+    phoneEmailListener?: (userObj: { user_json_url: string }) => void;
+  }
+}
 
 export default function PersonalDetailsPage() {
   const router = useRouter();
 
   const [details, setDetails] = useState<PersonalDetails>(emptyDetails);
-
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -57,6 +69,76 @@ export default function PersonalDetailsPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const [isPending, startTransition] = useTransition();
+
+  // Verification flags
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [verifyingPhone, setVerifyingPhone] = useState(false);
+
+  // Email OTP state
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [resendAfter, setResendAfter] = useState(0);
+
+  const loadVerificationStatus = async () => {
+    const result = await getVerificationStatus();
+
+    if (result.success && result.data) {
+      setEmailVerified(Boolean(result.data.emailVerified));
+      setPhoneVerified(Boolean(result.data.phoneVerified));
+    }
+  };
+
+  useEffect(() => {
+    loadVerificationStatus();
+  }, []);
+
+  // Register Phone.Email listener & inject script after profile finishes loading
+  const showPhoneEmailButton =
+    !loading && !phoneVerified && !editing && details.mobile.length === 10;
+
+  useEffect(() => {
+    window.phoneEmailListener = async (userObj) => {
+      if (!userObj?.user_json_url) return;
+
+      setVerifyingPhone(true);
+      try {
+        const result = await verifyPhoneWithPhoneEmail(userObj.user_json_url);
+
+        if (!result.success) {
+          toast.error(result.message);
+          return;
+        }
+
+        setPhoneVerified(true);
+        await loadVerificationStatus();
+        toast.success(result.message);
+      } catch {
+        toast.error("Mobile verification failed. Please try again.");
+      } finally {
+        setVerifyingPhone(false);
+      }
+    };
+
+    if (showPhoneEmailButton) {
+      const existingScript = document.getElementById("phone-email-script");
+      if (existingScript) {
+        existingScript.remove();
+      }
+
+      const script = document.createElement("script");
+      script.id = "phone-email-script";
+      script.src = "https://www.phone.email/sign_in_button_v1.js";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    return () => {
+      delete window.phoneEmailListener;
+    };
+  }, [showPhoneEmailButton]);
 
   // UploadThing profile photo uploader
   const { startUpload } = useUploadThing("profileImage", {
@@ -79,6 +161,17 @@ export default function PersonalDetailsPage() {
       setUploadingPhoto(false);
     },
   });
+
+  // Email OTP cooldown timer
+  useEffect(() => {
+    if (resendAfter <= 0) return;
+
+    const timer = setTimeout(() => {
+      setResendAfter((value) => Math.max(0, value - 1));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [resendAfter]);
 
   // Load member profile
   useEffect(() => {
@@ -128,7 +221,6 @@ export default function PersonalDetailsPage() {
     };
   }, []);
 
-  // Update individual fields
   const updateField = (field: keyof PersonalDetails, value: string) => {
     setDetails((current) => ({
       ...current,
@@ -136,7 +228,6 @@ export default function PersonalDetailsPage() {
     }));
   };
 
-  // Profile photo upload
   const handleProfileUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -170,7 +261,6 @@ export default function PersonalDetailsPage() {
     }
   };
 
-  // Save personal information
   const handleSave = () => {
     const payload: PersonalInput = {
       name: details.name.trim(),
@@ -194,6 +284,9 @@ export default function PersonalDetailsPage() {
 
         toast.success(result.message);
         setEditing(false);
+        setOtpSent(false);
+        setOtp("");
+        await loadVerificationStatus();
         router.refresh();
       } catch {
         toast.error("Unable to update personal information.");
@@ -204,6 +297,59 @@ export default function PersonalDetailsPage() {
   const handleCancel = () => {
     router.refresh();
     setEditing(false);
+  };
+
+  const handleSendEmailOtp = async () => {
+    setSendingOtp(true);
+
+    try {
+      const result = await sendEmailOtp();
+
+      if (!result.success) {
+        const seconds = Number(result.data?.retryAfter ?? 0);
+
+        if (seconds > 0) {
+          setResendAfter(seconds);
+          setOtpSent(true);
+        }
+
+        toast.error(result.message);
+        return;
+      }
+
+      setOtpSent(true);
+      setResendAfter(Number(result.data?.resendAfter ?? 60));
+      toast.success(result.message);
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (!/^\d{6}$/.test(otp)) {
+      toast.error("Please enter a valid 6-digit OTP.");
+      return;
+    }
+
+    setVerifyingOtp(true);
+
+    try {
+      const result = await verifyEmailOtp(otp);
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      setEmailVerified(true);
+      setOtp("");
+      setOtpSent(false);
+
+      await loadVerificationStatus();
+      toast.success("Email verified successfully!");
+    } finally {
+      setVerifyingOtp(false);
+    }
   };
 
   const inputClass =
@@ -225,13 +371,83 @@ export default function PersonalDetailsPage() {
 
   return (
     <main className="min-h-screen bg-[#f5f7f2] pb-28">
-      <div className="mx-auto max-w-xl space-y-4 ">
+      {/* Mobile App Screen Header */}
+      <header className="sticky top-0 z-20 flex h-14 w-full items-center justify-between border-b border-[#e8eee3] bg-[#f5f7f2]/90 px-4 backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/profile")}
+          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#dce3d8] bg-white text-[#1c3324] shadow-2xs transition hover:bg-[#1c3324] hover:text-white active:scale-95"
+          aria-label="Back to Profile"
+        >
+          <ArrowLeft size={16} />
+        </button>
+
+        <div className="flex flex-col items-center">
+          <span className="text-sm font-bold tracking-tight text-[#1c3324]">
+            Personal Details
+          </span>
+          <span className="text-[10px] text-[#69766a]">Member Profile</span>
+        </div>
+
+        <div className="h-9 w-9" />
+      </header>
+
+      <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
+        {/* Contact verification summary */}
+        <section className="rounded-2xl border border-[#e8eee3] bg-white p-4">
+          {emailVerified && phoneVerified ? (
+            <div className="flex items-center gap-3">
+              <CheckCircle2 size={25} className="text-green-600" />
+              <div>
+                <h3 className="text-sm font-bold text-green-700">
+                  Contact details verified
+                </h3>
+                <p className="text-xs text-gray-500">
+                  Your mobile number and email are verified.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="text-sm font-bold text-[#1c3324]">
+                Verify your contact details
+              </h3>
+
+              <p className="mt-1 text-xs text-gray-500">
+                Verify your mobile number and email address to secure your
+                account.
+              </p>
+
+              <div className="mt-3 flex gap-2">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                    phoneVerified
+                      ? "bg-green-50 text-green-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  Mobile: {phoneVerified ? "Verified" : "Pending"}
+                </span>
+
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                    emailVerified
+                      ? "bg-green-50 text-green-700"
+                      : "bg-amber-50 text-amber-700"
+                  }`}
+                >
+                  Email: {emailVerified ? "Verified" : "Pending"}
+                </span>
+              </div>
+            </div>
+          )}
+        </section>
+
         {/* Profile summary */}
         <section className="relative overflow-hidden rounded-2xl border border-[#e8eee3] bg-white p-4 shadow-[0_4px_18px_rgba(28,51,36,0.045)]">
           <div className="pointer-events-none absolute -right-8 -top-12 h-36 w-36 rounded-full bg-[#f0f5eb]" />
 
           <div className="relative flex items-center gap-4">
-            {/* Avatar */}
             <div className="relative h-[76px] w-[76px] shrink-0">
               <div className="relative h-full w-full overflow-hidden rounded-full border-[3px] border-white bg-[#eaf3e5] shadow-md">
                 {profileImage ? (
@@ -250,7 +466,6 @@ export default function PersonalDetailsPage() {
                 )}
               </div>
 
-              {/* Upload button */}
               <label
                 title="Change profile photo"
                 className={`absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-[#1c3324] text-white shadow-md ${
@@ -275,7 +490,6 @@ export default function PersonalDetailsPage() {
               </label>
             </div>
 
-            {/* Member information */}
             <div className="min-w-0 flex-1">
               <h2 className="truncate text-base font-bold text-[#1c3324]">
                 {details.name || "Your name"}
@@ -338,7 +552,7 @@ export default function PersonalDetailsPage() {
 
             {/* Father's name */}
             <div>
-              <label className={labelClass}>Father's Name</label>
+              <label className={labelClass}>Father&apos;s Name</label>
               <input
                 className={inputClass}
                 value={details.fatherName}
@@ -384,14 +598,14 @@ export default function PersonalDetailsPage() {
               </div>
             </div>
 
-            {/* Mobile */}
+            {/* Mobile (Phone.Email Verification) */}
             <div>
               <label className={labelClass}>Mobile Number *</label>
 
               <div className="relative">
                 <Phone
                   size={15}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-3.5 top-5.5 text-gray-400"
                 />
 
                 <input
@@ -406,6 +620,32 @@ export default function PersonalDetailsPage() {
                   placeholder="10-digit mobile number"
                   disabled={!editing}
                 />
+
+                <div className="mt-2 flex items-center justify-between">
+                  {phoneVerified ? (
+                    <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
+                      <CheckCircle2 size={14} />
+                      Mobile verified
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-xs text-amber-600">
+                        {verifyingPhone
+                          ? "Verifying mobile..."
+                          : "Mobile not verified"}
+                      </span>
+
+                      {showPhoneEmailButton && (
+                        <div
+                          className="pe_signin_button"
+                          data-client-id={
+                            process.env.NEXT_PUBLIC_PHONE_EMAIL_CLIENT_ID
+                          }
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -416,7 +656,7 @@ export default function PersonalDetailsPage() {
               <div className="relative">
                 <Mail
                   size={15}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                  className="absolute left-3.5 top-5.5 text-gray-400"
                 />
 
                 <input
@@ -428,6 +668,77 @@ export default function PersonalDetailsPage() {
                   disabled={!editing}
                   maxLength={150}
                 />
+
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    {emailVerified ? (
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-green-700">
+                        <CheckCircle2 size={14} />
+                        Email verified
+                      </span>
+                    ) : (
+                      <>
+                        <span className="text-xs text-amber-600">
+                          Email not verified
+                        </span>
+
+                        {!otpSent && (
+                          <button
+                            type="button"
+                            disabled={editing || sendingOtp || !details.email}
+                            onClick={handleSendEmailOtp}
+                            className="text-xs font-semibold text-[#55784c] hover:underline disabled:opacity-50"
+                          >
+                            {sendingOtp ? "Sending..." : "Verify Email"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {!emailVerified && otpSent && (
+                    <div className="space-y-2 rounded-xl border border-[#e8eee3] bg-[#f8faf6] p-3">
+                      <p className="text-xs text-gray-600">
+                        Enter the 6-digit OTP sent to your registered email.
+                      </p>
+
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={otp}
+                        onChange={(e) =>
+                          setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                        }
+                        placeholder="Enter 6-digit OTP"
+                        className={inputClass}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={handleVerifyEmailOtp}
+                        disabled={verifyingOtp || otp.length !== 6}
+                        className="h-10 w-full rounded-xl bg-[#1c3324] text-sm font-semibold text-white disabled:opacity-50"
+                      >
+                        {verifyingOtp ? "Verifying..." : "Verify OTP"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleSendEmailOtp}
+                        disabled={sendingOtp || resendAfter > 0}
+                        className="w-full text-center text-xs font-semibold text-[#55784c] disabled:opacity-50"
+                      >
+                        {resendAfter > 0
+                          ? `Resend OTP in ${resendAfter}s`
+                          : sendingOtp
+                            ? "Sending..."
+                            : "Resend OTP"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -444,6 +755,7 @@ export default function PersonalDetailsPage() {
             Edit
           </button>
         )}
+
         {editing && (
           <div className="flex gap-3">
             <button

@@ -1,10 +1,11 @@
+// src/actions/profile/personal.ts
 "use server";
 
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Gender } from "@/generated/prisma";
+import { Gender, VerificationPurpose } from "@/generated/prisma";
 
 const personalSchema = z.object({
   name: z.string().trim().min(2, "Enter your full name").max(100),
@@ -43,28 +44,87 @@ export async function updateMemberPersonalDetails(input: PersonalInput) {
     }
 
     const data = parsed.data;
+    const normalizedEmail = data.email ? data.email.trim().toLowerCase() : null;
 
-    const updated = await prisma.user.update({
+    // 1. Fetch existing contact fields to check if mobile or email changed
+    const currentUser = await prisma.user.findUnique({
       where: { id: session.userId },
-      data: {
-        name: data.name,
-        fatherName: data.fatherName || null,
-        gender: data.gender ? (data.gender as Gender) : null,
-        dateOfBirth: data.dateOfBirth
-          ? new Date(`${data.dateOfBirth}T00:00:00.000Z`)
-          : null,
-        mobile: data.mobile,
-        email: data.email || null,
-      },
       select: {
-        userId: true,
-        name: true,
-        fatherName: true,
-        gender: true,
-        dateOfBirth: true,
         mobile: true,
         email: true,
+        emailVerified: true,
+        phoneVerified: true,
       },
+    });
+
+    if (!currentUser) {
+      return { success: false, message: "Member record not found." };
+    }
+
+    const isMobileChanged = currentUser.mobile !== data.mobile;
+    const isEmailChanged =
+      (currentUser.email?.trim().toLowerCase() ?? null) !== normalizedEmail;
+
+    // 2. Check duplicate email manually (since email is nullable in schema)
+    if (normalizedEmail && isEmailChanged) {
+      const emailInUse = await prisma.user.findFirst({
+        where: {
+          email: normalizedEmail,
+          id: { not: session.userId },
+        },
+        select: { id: true },
+      });
+
+      if (emailInUse) {
+        return {
+          success: false,
+          message:
+            "This email address is already associated with another account.",
+        };
+      }
+    }
+
+    // 3. Update profile and invalidate stale OTP challenges if email changed
+    const updated = await prisma.$transaction(async (tx) => {
+      if (isEmailChanged) {
+        await tx.verificationChallenge.updateMany({
+          where: {
+            userId: session.userId,
+            purpose: VerificationPurpose.EMAIL,
+            consumedAt: null,
+          },
+          data: {
+            consumedAt: new Date(),
+          },
+        });
+      }
+
+      return tx.user.update({
+        where: { id: session.userId },
+        data: {
+          name: data.name,
+          fatherName: data.fatherName || null,
+          gender: data.gender ? (data.gender as Gender) : null,
+          dateOfBirth: data.dateOfBirth
+            ? new Date(`${data.dateOfBirth}T00:00:00.000Z`)
+            : null,
+          mobile: data.mobile,
+          email: normalizedEmail,
+          phoneVerified: isMobileChanged ? false : currentUser.phoneVerified,
+          emailVerified: isEmailChanged ? false : currentUser.emailVerified,
+        },
+        select: {
+          userId: true,
+          name: true,
+          fatherName: true,
+          gender: true,
+          dateOfBirth: true,
+          mobile: true,
+          email: true,
+          emailVerified: true,
+          phoneVerified: true,
+        },
+      });
     });
 
     revalidatePath("/dashboard/profile");
@@ -72,7 +132,9 @@ export async function updateMemberPersonalDetails(input: PersonalInput) {
 
     return {
       success: true,
-      message: "Personal information updated successfully.",
+      message: isEmailChanged
+        ? "Personal details updated. Please verify your new email address."
+        : "Personal information updated successfully.",
       personal: {
         ...updated,
         dateOfBirth: updated.dateOfBirth?.toISOString() ?? null,

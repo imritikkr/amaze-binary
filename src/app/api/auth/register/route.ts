@@ -2,6 +2,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { memberRegisterApiSchema } from "@/modules/validators/auth.schema";
 import { registerNewMember } from "@/modules/members/member.service";
+import {
+  issuePendingVerificationToken,
+  PENDING_VERIFICATION_COOKIE,
+} from "@/lib/auth/pending-verification";
 
 export async function POST(req: NextRequest) {
   try {

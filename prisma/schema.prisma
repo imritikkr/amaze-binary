@@ -71,6 +71,13 @@ model User {
   sponsor          User?   @relation("DirectReferrals", fields: [sponsorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   sponsoredMembers User[]  @relation("DirectReferrals")
 
+  // Registration verification access
+  pendingVerificationTokenHash String?
+  pendingVerificationExpiresAt DateTime?
+
+  // Verification challenges
+  verificationChallenges VerificationChallenge[]
+
   binaryPlacement BinaryPlacement? @relation("UserBinaryPlacement")
   // Structural Binary Node References
 
@@ -660,4 +667,34 @@ model Store {
 
   @@index([isActive, city])
   @@index([district, state])
+}
+
+enum VerificationPurpose {
+  EMAIL
+  MOBILE
+}
+
+model VerificationChallenge {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  purpose VerificationPurpose
+
+  // Store only the SHA-256 hash, never the actual OTP
+  otpHash String
+
+  expiresAt         DateTime
+  resendAvailableAt DateTime
+
+  attempts Int @default(0)
+
+  consumedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
 }

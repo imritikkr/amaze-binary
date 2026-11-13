@@ -6,7 +6,7 @@ import {
   updateAncestorLegCounts,
 } from "@/modules/binary/placement.service";
 import { MemberRegisterApiInput } from "@/modules/validators/auth.schema";
-import { sendEmailVerificationLink } from "@/lib/resend/verification";
+// import { sendEmailVerificationLink } from "@/lib/resend/verification";
 
 export async function registerNewMember(data: MemberRegisterApiInput) {
   const sanitizedEmail =
@@ -138,15 +138,6 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
   updateAncestorLegCounts(createdPlacement.id).catch((err: unknown) => {
     console.warn("Ancestor leg count propagation failed (non-blocking):", err);
   });
-
-  // 7. Dispatch verification email via Resend if email was provided
-  if (sanitizedEmail) {
-    sendEmailVerificationLink(sanitizedEmail, createdMember.name).catch(
-      (emailErr: unknown) => {
-        console.warn("Email verification link dispatch failed:", emailErr);
-      },
-    );
-  }
 
   return {
     userId: createdMember.userId,

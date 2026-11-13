@@ -73,6 +73,9 @@ export async function getSession() {
           email: true,
           role: true,
           accountStatus: true,
+          // Email and mobile verification
+          emailVerified: true,
+          phoneVerified: true,
         },
       },
     },
