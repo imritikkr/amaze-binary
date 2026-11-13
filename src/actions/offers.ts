@@ -3,10 +3,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { ProductStatus } from "@/generated/prisma";
-import {
-  DEFAULT_OFFERS,
-  type FlashOfferItem,
-} from "@/components/layout/FlashOfferBar";
+import { DEFAULT_OFFERS, type FlashOfferItem } from "@/constants/offers";
 
 export async function getActiveFlashOffers(): Promise<FlashOfferItem[]> {
   try {
