@@ -698,3 +698,32 @@ model VerificationChallenge {
   @@index([userId, purpose])
   @@index([expiresAt])
 }
+
+// Add to prisma/schema.prisma
+enum CouponDiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+model Coupon {
+  id                String             @id @default(auto()) @map("_id") @db.ObjectId
+  code              String             @unique // Stored uppercase, e.g. "AMAZE10", "FESTIVE200"
+  title             String // Internal/offer label, e.g. "Diwali Wellness 15% Off"
+  description       String?
+  discountType      CouponDiscountType @default(PERCENTAGE)
+  discountValue     Int // Percentage (e.g. 15) or Flat amount in INR (e.g. 200)
+  minOrderAmount    Int                @default(0) // Minimum cart DP subtotal in INR
+  maxDiscountAmount Int? // Optional max cap in INR for PERCENTAGE coupons
+  usageLimit        Int? // Optional total redemptions cap across store
+  perUserLimit      Int                @default(1)
+  usedCount         Int                @default(0)
+  isActive          Boolean            @default(false) // Admin toggle: activate only during offers
+  startsAt          DateTime?
+  expiresAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([expiresAt])
+}
