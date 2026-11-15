@@ -97,9 +97,14 @@ model User {
   cart      Cart?
   orders    Order[]
 
-  rewardProgress MemberRewardProgress?
-  earnedRewards  MemberReward[]
-  rewardClaims   RewardClaim[]
+  rewardProgress        MemberRewardProgress?
+  earnedRewards         MemberReward[]
+  rewardClaims          RewardClaim[]
+  binaryBusinessBalance BinaryBusinessBalance?
+  dailyPairSummaries    DailyPairSummary[]
+  commissionLedgers     CommissionLedger[]
+
+  activatedAt DateTime?
 
   @@index([sponsorId])
   @@index([accountStatus])
@@ -329,6 +334,7 @@ enum WalletTransactionType {
   REWARD
   WITHDRAWAL
   ADJUSTMENT
+  SPONSOR_INCOME
 }
 
 enum WalletTransactionStatus {
@@ -769,6 +775,7 @@ enum RewardDeliveryStatus {
 model RewardSlab {
   id                 String  @id @default(auto()) @map("_id") @db.ObjectId
   level              Int     @unique // 1 to 13
+  milestoneName      String
   requiredPaidPairs  Int     @unique // 5, 10, 25, 50, 100, ... 50000
   productName        String
   productImage       String?
@@ -894,4 +901,95 @@ model RewardAuditLog {
 
   @@index([entityType, createdAt])
   @@map("reward_audit_logs")
+}
+
+// 
+// Update RewardSlab to include milestoneName:
+// milestoneName String // e.g., "Starter", "Bronze", ... "Legend"
+
+model CompensationConfig {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  singletonKey String @unique @default("DEFAULT")
+
+  activationMinAmzCoins Float   @default(1.0)
+  sponsorCommissionInr  Int     @default(150)
+  sponsorIncomeEnabled  Boolean @default(true)
+
+  binaryPairCommissionInr Int     @default(200)
+  binaryIncomeEnabled     Boolean @default(true)
+  dailyMaxPaidPairs       Int     @default(20)
+
+  minLeftActiveDirects  Int @default(1)
+  minRightActiveDirects Int @default(1)
+
+  updatedBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+
+  @@map("compensation_configs")
+}
+
+model BinaryBusinessBalance {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  memberId String @unique @db.ObjectId
+  member   User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  leftAvailableCoins  Float @default(0)
+  rightAvailableCoins Float @default(0)
+
+  leftCarryForward  Float @default(0)
+  rightCarryForward Float @default(0)
+
+  leftLapsedTotal  Float @default(0)
+  rightLapsedTotal Float @default(0)
+
+  leftMemberCount  Int @default(0)
+  rightMemberCount Int @default(0)
+
+  lastMatchedDate String? // YYYY-MM-DD (IST)
+  updatedAt       DateTime @updatedAt
+
+  @@map("binary_business_balances")
+}
+
+model DailyPairSummary {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  memberId String @db.ObjectId
+  member   User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  businessDate      String // YYYY-MM-DD (IST)
+  matchedPairsCount Int    @default(0)
+  paidPairsCount    Int    @default(0) // Max 20 per day
+  earnedAmountInr   Int    @default(0)
+
+  carriedForwardLeg   String? // "LEFT" | "RIGHT" | null
+  carriedForwardCoins Float   @default(0)
+  lapsedLeg           String? // "LEFT" | "RIGHT" | null
+  lapsedCoins         Float   @default(0)
+  tieBreakerUsed      String? // "COINS" | "MEMBER_COUNT" | "EARLIER_ACTIVATION"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([memberId, businessDate])
+  @@index([businessDate])
+  @@map("daily_pair_summaries")
+}
+
+model CommissionLedger {
+  id             String @id @default(auto()) @map("_id") @db.ObjectId
+  idempotencyKey String @unique // Prevents duplicate sponsor or binary payout for same source event
+  memberId       String @db.ObjectId
+  member         User   @relation(fields: [memberId], references: [id])
+
+  commissionType  String // "SPONSOR_INCOME" | "BINARY_MATCHING" | "REVERSAL"
+  amountInr       Int
+  pairsCount      Int     @default(0)
+  sourceReference String // e.g. activatedUserId or "BINARY:memberId:2026-11-15:PAIR_1"
+  walletTxId      String? @db.ObjectId
+  status          String  @default("CREDITED") // "CREDITED" | "REVERSED"
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId, createdAt])
+  @@map("commission_transactions")
 }

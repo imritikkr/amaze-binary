@@ -374,12 +374,12 @@ export default function ProfilePage() {
               color="gold"
             />
 
-            <ServiceTile
+            {/* <ServiceTile
               label="Amaze Wallet"
               icon={Wallet}
               href="/dashboard/wallet"
               color="blue"
-            />
+            /> */}
 
             <ServiceTile
               label="My Orders"
@@ -390,6 +390,11 @@ export default function ProfilePage() {
               label="AMZ Coins"
               icon={CoinsIcon}
               href="/dashboard/coins"
+            />
+            <ServiceTile
+              label="My Rewards"
+              icon={CoinsIcon}
+              href="/dashboard/rewards"
             />
           </div>
         </section>

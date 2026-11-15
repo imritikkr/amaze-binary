@@ -425,8 +425,80 @@ export async function getAdminRewardsWorkspace(): Promise<{
   };
 }
 
+// export async function updateRewardSlabAction(input: {
+//   id: string;
+//   requiredPaidPairs: number;
+//   productName: string;
+//   productImage?: string | null;
+//   cashAlternativeInr?: number | null;
+//   isCashAllowed: boolean;
+//   isActive: boolean;
+// }) {
+//   const admin = await requireAdmin();
+//   if (!admin) {
+//     return { success: false, message: "Unauthorized" };
+//   }
+
+//   try {
+//     const before = await prisma.rewardSlab.findUnique({
+//       where: { id: input.id },
+//     });
+//     if (!before) {
+//       return { success: false, message: "Reward slab not found." };
+//     }
+
+//     const cashValue =
+//       input.isCashAllowed &&
+//       input.cashAlternativeInr &&
+//       input.cashAlternativeInr > 0
+//         ? Math.round(Number(input.cashAlternativeInr))
+//         : null;
+
+//     const after = await prisma.rewardSlab.update({
+//       where: { id: input.id },
+//       data: {
+//         requiredPaidPairs: Math.max(
+//           1,
+//           Math.round(Number(input.requiredPaidPairs)),
+//         ),
+//         productName: input.productName.trim(),
+//         productImage: input.productImage?.trim() || null,
+//         cashAlternativeInr: cashValue,
+//         isCashAllowed: Boolean(input.isCashAllowed && cashValue !== null),
+//         isActive: Boolean(input.isActive),
+//       },
+//     });
+
+//     await prisma.rewardAuditLog.create({
+//       data: {
+//         adminId: admin.id,
+//         entityType: "REWARD_SLAB",
+//         entityId: after.id,
+//         action: "SLAB_UPDATED",
+//         beforeState: JSON.stringify(before),
+//         afterState: JSON.stringify(after),
+//         remarks: `Updated Level ${after.level} (${after.productName})`,
+//       },
+//     });
+
+//     revalidatePath("/admin/rewards");
+//     revalidatePath("/dashboard/rewards");
+
+//     return {
+//       success: true,
+//       message: `Level ${after.level} (${after.productName}) updated.`,
+//     };
+//   } catch (error) {
+//     console.error("updateRewardSlabAction error:", error);
+//     return { success: false, message: "Failed to update reward slab." };
+//   }
+// }
+
+// after updating name of each level
+
 export async function updateRewardSlabAction(input: {
   id: string;
+  milestoneName: string;
   requiredPaidPairs: number;
   productName: string;
   productImage?: string | null;
@@ -457,6 +529,7 @@ export async function updateRewardSlabAction(input: {
     const after = await prisma.rewardSlab.update({
       where: { id: input.id },
       data: {
+        milestoneName: input.milestoneName.trim() || before.milestoneName,
         requiredPaidPairs: Math.max(
           1,
           Math.round(Number(input.requiredPaidPairs)),
@@ -477,7 +550,7 @@ export async function updateRewardSlabAction(input: {
         action: "SLAB_UPDATED",
         beforeState: JSON.stringify(before),
         afterState: JSON.stringify(after),
-        remarks: `Updated Level ${after.level} (${after.productName})`,
+        remarks: `Updated Level ${after.level} ${after.milestoneName} (${after.productName})`,
       },
     });
 
@@ -486,7 +559,7 @@ export async function updateRewardSlabAction(input: {
 
     return {
       success: true,
-      message: `Level ${after.level} (${after.productName}) updated.`,
+      message: `Level ${after.level} (${after.milestoneName} — ${after.productName}) updated.`,
     };
   } catch (error) {
     console.error("updateRewardSlabAction error:", error);
