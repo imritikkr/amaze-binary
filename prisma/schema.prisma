@@ -97,6 +97,10 @@ model User {
   cart      Cart?
   orders    Order[]
 
+  rewardProgress MemberRewardProgress?
+  earnedRewards  MemberReward[]
+  rewardClaims   RewardClaim[]
+
   @@index([sponsorId])
   @@index([accountStatus])
   @@index([createdAt])
@@ -726,4 +730,168 @@ model Coupon {
 
   @@index([isActive])
   @@index([expiresAt])
+}
+
+// Add to User model in prisma/schema.prisma:
+// rewardProgress  MemberRewardProgress?
+// earnedRewards   MemberReward[]
+// rewardClaims    RewardClaim[]
+
+enum RewardSelectionType {
+  PRODUCT
+  CASH
+}
+
+enum RewardEligibilityStatus {
+  ELIGIBLE
+  CLAIMED
+  CANCELLED
+}
+
+enum RewardClaimStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  DISPATCHED
+  DELIVERED
+  PAID_OUT
+}
+
+enum RewardDeliveryStatus {
+  NOT_STARTED
+  PACKING
+  DISPATCHED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+}
+
+model RewardSlab {
+  id                 String  @id @default(auto()) @map("_id") @db.ObjectId
+  level              Int     @unique // 1 to 13
+  requiredPaidPairs  Int     @unique // 5, 10, 25, 50, 100, ... 50000
+  productName        String
+  productImage       String?
+  description        String?
+  cashAlternativeInr Int? // Null for milestones 1–4 by default, configurable by Admin
+  isCashAllowed      Boolean @default(false)
+  isActive           Boolean @default(true)
+
+  memberRewards MemberReward[]
+  claims        RewardClaim[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, requiredPaidPairs])
+  @@map("reward_slabs")
+}
+
+model MemberRewardProgress {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  memberId String @unique @db.ObjectId
+  member   User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  lifetimePaidPairs  Int       @default(0)
+  processedTxIds     String[]  @default([]) // Idempotency guard for verified BINARY_COMMISSION tx IDs
+  lastPairCreditedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("member_reward_progress")
+}
+
+model MemberReward {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  memberId String @db.ObjectId
+  member   User   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  rewardSlabId String     @db.ObjectId
+  rewardSlab   RewardSlab @relation(fields: [rewardSlabId], references: [id])
+
+  achievedAtPairs Int
+  status          RewardEligibilityStatus @default(ELIGIBLE)
+  earnedAt        DateTime                @default(now())
+
+  claim RewardClaim?
+
+  @@unique([memberId, rewardSlabId]) // Guarantees each milestone is awarded only once per member
+  @@index([memberId, status])
+  @@map("member_rewards")
+}
+
+model RewardClaim {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  claimNumber String @unique
+
+  memberRewardId String       @unique @db.ObjectId
+  memberReward   MemberReward @relation(fields: [memberRewardId], references: [id], onDelete: Cascade)
+
+  memberId String @db.ObjectId
+  member   User   @relation(fields: [memberId], references: [id])
+
+  rewardSlabId String     @db.ObjectId
+  rewardSlab   RewardSlab @relation(fields: [rewardSlabId], references: [id])
+
+  selectionType   RewardSelectionType
+  productSnapshot String
+  cashAmountInr   Int?
+
+  // Shipping snapshot when selectionType == PRODUCT
+  recipientName   String?
+  recipientMobile String?
+  shippingAddress String?
+
+  status       RewardClaimStatus @default(PENDING_APPROVAL)
+  adminRemarks String?
+  reviewedBy   String?           @db.ObjectId
+  reviewedAt   DateTime?
+  walletTxId   String?           @db.ObjectId
+
+  delivery RewardDelivery?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId, createdAt])
+  @@index([status])
+  @@map("reward_claims")
+}
+
+model RewardDelivery {
+  id      String      @id @default(auto()) @map("_id") @db.ObjectId
+  claimId String      @unique @db.ObjectId
+  claim   RewardClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  courierName    String?
+  trackingNumber String?
+  trackingUrl    String?
+  dispatchNotes  String?
+  status         RewardDeliveryStatus @default(NOT_STARTED)
+
+  dispatchedAt DateTime?
+  deliveredAt  DateTime?
+  updatedBy    String?   @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("reward_delivery")
+}
+
+model RewardAuditLog {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  adminId     String  @db.ObjectId
+  entityType  String // "REWARD_SLAB" | "REWARD_CLAIM" | "REWARD_DELIVERY"
+  entityId    String
+  action      String // "SLAB_UPDATED" | "CLAIM_APPROVED" | "CLAIM_REJECTED" | "DISPATCH_UPDATED"
+  beforeState String?
+  afterState  String?
+  remarks     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, createdAt])
+  @@map("reward_audit_logs")
 }

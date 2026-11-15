@@ -19,6 +19,7 @@ import {
   Settings,
   Store,
   TicketPercent,
+  Receipt,
 } from "lucide-react";
 
 type AdminSidebarProps = {
@@ -48,7 +49,7 @@ const navigation = [
       {
         label: "Orders",
         href: "/admin/orders",
-        icon: Package,
+        icon: Receipt,
       },
       {
         label: "Categories",
@@ -73,6 +74,11 @@ const navigation = [
       {
         label: "Coupons & Offers",
         href: "/admin/coupons",
+        icon: TicketPercent,
+      },
+      {
+        label: "Rewards & Slabs",
+        href: "/admin/rewards",
         icon: TicketPercent,
       },
     ],
