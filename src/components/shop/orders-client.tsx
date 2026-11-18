@@ -85,6 +85,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function OrdersClient({ orders }: Props) {
+  console.log(orders);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [paymentFilter, setPaymentFilter] = useState("ALL");
@@ -320,8 +321,8 @@ export function OrdersClient({ orders }: Props) {
                 <div className="flex flex-col justify-between gap-4 border-b border-gray-100 p-5 sm:flex-row sm:items-center sm:p-6">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-[#1c3324]">
-                        #{order.orderNumber}
+                      <span className="text-xs text-[#1c3324]">
+                        {/* #{order.orderNumber} */}#{order.id}
                       </span>
                       <StatusBadge status={order.status} />
                     </div>

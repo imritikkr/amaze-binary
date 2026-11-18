@@ -299,7 +299,7 @@ export async function getAdminMembers(params?: {
         where: { activationStatus: ActivationStatus.ACTIVE },
       }),
       prisma.user.count({
-        where: { activationStatus: ActivationStatus.FREE },
+        where: { activationStatus: ActivationStatus.INACTIVE },
       }),
       prisma.user.count({
         where: { accountStatus: AccountStatus.SUSPENDED },

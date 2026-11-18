@@ -547,6 +547,8 @@ enum PaymentProvider {
   CASHFREE
   PHONEPE
   MANUAL
+  UPI_QR
+  COD
 }
 
 type OrderAddress {
@@ -580,8 +582,10 @@ model Order {
   deliveryAddress   OrderAddress?
 
   subtotal       Int
-  shippingCharge Int @default(0)
+  shippingCharge Int     @default(0)
   totalAmount    Int
+  discountAmount Int     @default(0)
+  couponCode     String?
 
   paymentStatus OrderPaymentStatus @default(PENDING)
   status        OrderStatus        @default(PENDING)
@@ -643,6 +647,23 @@ model Payment {
   updatedAt DateTime @updatedAt
 
   @@index([providerPaymentId])
+}
+
+model PaymentGatewaySetting {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  singletonKey String @unique @default("DEFAULT")
+
+  upiId        String  @default("amazeayurveda@upi")
+  upiPayeeName String  @default("Amaze Ayurveda Pvt Ltd")
+  customQrUrl  String? // Optional uploaded QR image; if blank, dynamic amount QR is generated from upiId
+  upiQrEnabled Boolean @default(true)
+  codEnabled   Boolean @default(true)
+  paymentNote  String? @default("Scan QR with GPay, PhonePe, Paytm, or BHIM UPI and enter the 12-digit UTR.")
+
+  updatedBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_gateway_settings")
 }
 
 model Store {

@@ -1,62 +1,65 @@
-// src/app/shop/page.tsx
+// src/app/(public)/shop/page.tsx
 import type { Metadata } from "next";
-import {
-  getShopCategories,
-  getShopProducts,
-  type ShopSortOption,
-} from "@/actions/shop";
-import { ShopClient } from "@/components/shop/ShopClient";
+import { getShopCategories, getShopProducts } from "@/actions/shop";
+import { StorefrontClient } from "@/components/shop/StorefrontClient";
 
 export const metadata: Metadata = {
-  title: "Shop Ayurvedic Wellness Products | Amaze Ayurveda",
+  title: "Shop Ayurvedic Formulations | Amaze Ayurveda",
   description:
-    "Explore authentic herbal supplements, immunity boosters, digestive care, and natural wellness formulations by Amaze Ayurveda.",
+    "Explore GMP-certified Ayurvedic wellness formulations, herbal juices, churnas, and daily nutrition at Distributor Price (DP) with AmzCoins.",
 };
 
 type ShopPageProps = {
   searchParams: Promise<{
-    search?: string;
     category?: string;
+    q?: string;
     sort?: string;
-    page?: string;
     inStock?: string;
+    bogo?: string;
   }>;
 };
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
   const resolvedParams = await searchParams;
+  const activeCategory = resolvedParams.category || "";
+  const searchQuery = resolvedParams.q || "";
+  const sortBy = resolvedParams.sort || "featured";
+  const inStockOnly = resolvedParams.inStock === "1";
+  const bogoOnly = resolvedParams.bogo === "1";
 
-  const search = resolvedParams.search ?? "";
-  const category = resolvedParams.category ?? "all";
-  const sort = (resolvedParams.sort as ShopSortOption) || "newest";
-  const page = Math.max(1, Number(resolvedParams.page) || 1);
-  const inStockOnly = resolvedParams.inStock === "true";
-
-  const [categoriesRes, productsRes] = await Promise.all([
-    getShopCategories(),
+  const [productsRes, categoriesRes] = await Promise.all([
     getShopProducts({
-      search,
-      category,
-      sort,
-      page,
-      limit: 12,
+      category: activeCategory || undefined,
+      search: searchQuery || undefined,
       inStockOnly,
+      limit: 60,
     }),
+    getShopCategories(),
   ]);
 
+  let products = productsRes.products ?? [];
+
+  if (bogoOnly) {
+    products = products.filter((p) => p.bogoEnabled);
+  }
+
+  if (sortBy === "price-asc") {
+    products = [...products].sort((a, b) => a.price - b.price);
+  } else if (sortBy === "price-desc") {
+    products = [...products].sort((a, b) => b.price - a.price);
+  } else if (sortBy === "coins-desc") {
+    products = [...products].sort((a, b) => b.bv - a.bv);
+  }
+
   return (
-    <ShopClient
-      initialProducts={productsRes.products}
-      initialTotalCount={productsRes.totalCount}
-      initialTotalPages={productsRes.totalPages}
-      initialPage={productsRes.currentPage}
-      categories={categoriesRes.data}
-      initialFilters={{
-        search,
-        category,
-        sort,
-        inStockOnly,
-      }}
+    <StorefrontClient
+      products={products}
+      categories={categoriesRes.data ?? []}
+      initialCategory={activeCategory}
+      initialQuery={searchQuery}
+      initialSort={sortBy}
+      initialInStock={inStockOnly}
+      initialBogo={bogoOnly}
     />
   );
 }

@@ -364,3 +364,103 @@ export async function runDailyBinaryMatchingForMember(
 
   return { processed: true, summary };
 }
+// Add to src/lib/compensation/engine.ts
+import { BinaryPosition } from "@/generated/prisma";
+
+export async function propagateOrderCoinsToUpline(input: {
+  memberId: string;
+  coins: number;
+  incrementActiveMemberCount?: boolean;
+  sourceOrderId: string;
+}) {
+  const {
+    memberId,
+    coins,
+    incrementActiveMemberCount = false,
+    sourceOrderId,
+  } = input;
+  if (coins <= 0 && !incrementActiveMemberCount) return { propagated: false };
+
+  const startNode = await prisma.binaryPlacement.findUnique({
+    where: { userId: memberId },
+    select: { parentId: true, position: true },
+  });
+  if (!startNode?.parentId) return { propagated: false };
+
+  return prisma.$transaction(async (tx) => {
+    const ledgerKey = `ORDER_BV:${sourceOrderId}`;
+    const exists = await tx.commissionLedger.findUnique({
+      where: { idempotencyKey: ledgerKey },
+    });
+    if (exists) return { propagated: false };
+
+    let currentParentId: string | null = startNode.parentId;
+    let legPosition: BinaryPosition = startNode.position;
+
+    while (currentParentId) {
+      const parent = await tx.binaryPlacement.findUnique({
+        where: { id: currentParentId },
+        select: { id: true, userId: true, parentId: true, position: true },
+      });
+      if (!parent) break;
+
+      const isLeft = legPosition === BinaryPosition.LEFT;
+
+      await tx.binaryPlacement.update({
+        where: { id: parent.id },
+        data: isLeft
+          ? {
+              leftBv: { increment: coins },
+              ...(incrementActiveMemberCount
+                ? { leftCount: { increment: 1 } }
+                : {}),
+            }
+          : {
+              rightBv: { increment: coins },
+              ...(incrementActiveMemberCount
+                ? { rightCount: { increment: 1 } }
+                : {}),
+            },
+      });
+
+      await tx.binaryBusinessBalance.upsert({
+        where: { memberId: parent.userId },
+        create: {
+          memberId: parent.userId,
+          leftAvailableCoins: isLeft ? coins : 0,
+          rightAvailableCoins: isLeft ? 0 : coins,
+          leftMemberCount: isLeft && incrementActiveMemberCount ? 1 : 0,
+          rightMemberCount: !isLeft && incrementActiveMemberCount ? 1 : 0,
+        },
+        update: isLeft
+          ? {
+              leftAvailableCoins: { increment: coins },
+              ...(incrementActiveMemberCount
+                ? { leftMemberCount: { increment: 1 } }
+                : {}),
+            }
+          : {
+              rightAvailableCoins: { increment: coins },
+              ...(incrementActiveMemberCount
+                ? { rightMemberCount: { increment: 1 } }
+                : {}),
+            },
+      });
+
+      legPosition = parent.position;
+      currentParentId = parent.parentId;
+    }
+
+    await tx.commissionLedger.create({
+      data: {
+        idempotencyKey: ledgerKey,
+        memberId,
+        commissionType: "BINARY_BV_PROPAGATION",
+        amountInr: 0,
+        sourceReference: sourceOrderId,
+      },
+    });
+
+    return { propagated: true };
+  });
+}

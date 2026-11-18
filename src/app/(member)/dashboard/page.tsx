@@ -6,6 +6,7 @@ import {
   WelcomeCard,
   MetricCards,
   BinaryOverviewCard,
+  MilestoneRewardProgressCard,
 } from "@/components/dashboard/DashboardCards";
 import {
   QuickActionsGrid,
@@ -23,7 +24,9 @@ export default function DashboardHomePage() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const res = await fetch("/api/members/dashboard");
+        const res = await fetch("/api/members/dashboard", {
+          cache: "no-store",
+        });
         const json = await res.json();
         if (!res.ok || !json.success) {
           throw new Error(json.message || "Unable to load dashboard data");
@@ -56,24 +59,32 @@ export default function DashboardHomePage() {
 
   return (
     <div className="space-y-6">
-      {/* 1. Welcome Card */}
+      {/* 1. Welcome Card (shows Account + ID Activation Status & Quick Activate CTA) */}
       <WelcomeCard profile={data.profile} />
 
+      {/* 2. Activation Checklist */}
       <ActivationChecklistCard activation={data.activation} />
 
-      {/* 2. Top Metric Cards */}
+      {/* 3. Top Metric Cards (Income Wallet, Lifetime Paid Pairs, Directs, Team) */}
       <MetricCards metrics={data.metrics} />
 
-      {/* 3. Binary Overview & Profile Completion */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 4. Binary Overview & 13-Level Milestone Rewards Progress */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <BinaryOverviewCard metrics={data.metrics} />
-        <ProfileCompletion completionRate={data.profile.completionRate} />
+        <MilestoneRewardProgressCard metrics={data.metrics} />
       </div>
 
-      {/* 4. Action Shortcuts */}
-      <QuickActionsGrid userId={data.profile.userId} />
+      {/* 5. Profile Completion & Action Shortcuts */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <ProfileCompletion completionRate={data.profile.completionRate} />
+        </div>
+        <div className="lg:col-span-2">
+          <QuickActionsGrid userId={data.profile.userId} />
+        </div>
+      </div>
 
-      {/* 5. Team Enrolment Feed */}
+      {/* 6. Team Enrolment Feed */}
       <RecentMembersList members={data.recentMembers} />
     </div>
   );

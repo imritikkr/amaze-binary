@@ -4,6 +4,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth/session";
 import {
+  ActivationStatus,
   FulfillmentMethod,
   OrderPaymentStatus,
   OrderStatus,
@@ -11,6 +12,10 @@ import {
   Role,
 } from "@/generated/prisma";
 import { evaluateAndSyncMemberActivation } from "@/lib/member/activation";
+import {
+  processSponsorCommissionOnActivation,
+  propagateOrderCoinsToUpline,
+} from "@/lib/compensation/engine";
 import { revalidatePath } from "next/cache";
 
 export type AdminOrderListItem = {
@@ -20,6 +25,8 @@ export type AdminOrderListItem = {
   updatedAt: string;
   fulfillmentMethod: FulfillmentMethod;
   subtotal: number;
+  discountAmount: number;
+  couponCode: string | null;
   shippingCharge: number;
   totalAmount: number;
   totalAmzCoins: number;
@@ -138,6 +145,12 @@ export async function getAdminOrders(params?: {
       where.OR = [
         { orderNumber: { contains: search, mode: "insensitive" } },
         { pickupStoreName: { contains: search, mode: "insensitive" } },
+        { couponCode: { contains: search, mode: "insensitive" } },
+        {
+          payment: {
+            providerPaymentId: { contains: search, mode: "insensitive" },
+          },
+        },
         {
           user: {
             OR: [
@@ -212,6 +225,8 @@ export async function getAdminOrders(params?: {
         updatedAt: order.updatedAt.toISOString(),
         fulfillmentMethod: order.fulfillmentMethod,
         subtotal: order.subtotal,
+        discountAmount: order.discountAmount,
+        couponCode: order.couponCode ?? null,
         shippingCharge: order.shippingCharge,
         totalAmount: order.totalAmount,
         totalAmzCoins: Number(totalAmzCoins.toFixed(2)),
@@ -322,6 +337,13 @@ export async function updateAdminOrderStatusAction(input: {
       include: {
         items: true,
         payment: true,
+        user: {
+          select: {
+            id: true,
+            activationStatus: true,
+            activatedAt: true,
+          },
+        },
       },
     });
 
@@ -330,15 +352,27 @@ export async function updateAdminOrderStatusAction(input: {
     }
 
     const nextPaymentStatus = input.paymentStatus ?? existing.paymentStatus;
+    const isMarkingPaidNow =
+      existing.paymentStatus !== OrderPaymentStatus.PAID &&
+      nextPaymentStatus === OrderPaymentStatus.PAID;
+
     const isCancellingNow =
       input.status === OrderStatus.CANCELLED &&
       existing.status !== OrderStatus.CANCELLED;
+
+    // Auto-advance order from PENDING to PROCESSING when payment is verified
+    const nextOrderStatus =
+      isMarkingPaidNow &&
+      existing.status === OrderStatus.PENDING &&
+      input.status === OrderStatus.PENDING
+        ? OrderStatus.PROCESSING
+        : input.status;
 
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: existing.id },
         data: {
-          status: input.status,
+          status: nextOrderStatus,
           paymentStatus: nextPaymentStatus,
         },
       });
@@ -350,38 +384,120 @@ export async function updateAdminOrderStatusAction(input: {
         });
       }
 
-      // Restore product stock when an active order is cancelled
-      if (isCancellingNow && input.restoreStockOnCancel !== false) {
+      // Deduct physical inventory (paid + BOGO free units) once when payment becomes PAID
+      if (isMarkingPaidNow) {
         for (const item of existing.items) {
           const totalUnits = item.quantity + item.freeQuantity;
           if (totalUnits > 0) {
             await tx.product.update({
               where: { id: item.productId },
               data: {
-                stockQuantity: { increment: totalUnits },
+                stockQuantity: { decrement: totalUnits },
               },
             });
           }
         }
       }
+
+      // Restore product stock & coupon usage if an order is cancelled
+      if (isCancellingNow) {
+        if (
+          existing.paymentStatus === OrderPaymentStatus.PAID ||
+          input.restoreStockOnCancel === true
+        ) {
+          for (const item of existing.items) {
+            const totalUnits = item.quantity + item.freeQuantity;
+            if (totalUnits > 0) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: {
+                  stockQuantity: { increment: totalUnits },
+                },
+              });
+            }
+          }
+        }
+
+        if (existing.couponCode) {
+          await tx.coupon.updateMany({
+            where: {
+              code: existing.couponCode,
+              usedCount: { gt: 0 },
+            },
+            data: {
+              usedCount: { decrement: 1 },
+            },
+          });
+        }
+      }
     });
 
-    // Re-evaluate member account activation when payment is PAID
+    // Trigger ID Activation, Upline Binary AMZ Coins, & Sponsor Income when PAID
     let activationSynced = false;
+    let sponsorCredited = false;
+
     if (nextPaymentStatus === OrderPaymentStatus.PAID) {
+      const wasActiveBefore =
+        existing.user.activationStatus === ActivationStatus.ACTIVE;
+
       const activation = await evaluateAndSyncMemberActivation(existing.userId);
       activationSynced = Boolean(activation?.isActive);
+
+      const justActivated = !wasActiveBefore && activationSynced;
+
+      if (justActivated && !existing.user.activatedAt) {
+        await prisma.user.update({
+          where: { id: existing.userId },
+          data: { activatedAt: new Date() },
+        });
+      }
+
+      const totalOrderCoins = Number(
+        existing.items
+          .reduce(
+            (sum, item) => sum + Number(item.amzcoins || 0) * item.quantity,
+            0,
+          )
+          .toFixed(4),
+      );
+
+      // Propagate AMZ Coins up the binary tree (idempotent per orderId)
+      if (totalOrderCoins > 0 || justActivated) {
+        await propagateOrderCoinsToUpline({
+          memberId: existing.userId,
+          coins: totalOrderCoins,
+          incrementActiveMemberCount: justActivated,
+          sourceOrderId: existing.id,
+        });
+      }
+
+      // Credit ₹150 Sponsor Income if member ID is ACTIVE (idempotent per memberId)
+      if (activationSynced) {
+        const sponsorRes = await processSponsorCommissionOnActivation(
+          existing.userId,
+        );
+        sponsorCredited = Boolean(sponsorRes?.credited);
+      }
     }
 
     revalidatePath("/admin/orders");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/coupons");
     revalidatePath("/dashboard");
+    revalidatePath("/dashboard/wallet");
+    revalidatePath("/dashboard/team");
     revalidatePath("/shop");
+
+    const notes: string[] = [];
+    if (activationSynced) notes.push("member ID active");
+    if (sponsorCredited) notes.push("₹150 sponsor commission credited");
 
     return {
       success: true,
-      message: activationSynced
-        ? `Order #${existing.orderNumber} updated to ${input.status} & member account activated!`
-        : `Order #${existing.orderNumber} updated to ${input.status}.`,
+      message:
+        notes.length > 0
+          ? `Order #${existing.orderNumber} updated to ${nextOrderStatus} (${notes.join(" & ")}).`
+          : `Order #${existing.orderNumber} updated to ${nextOrderStatus}.`,
       activationSynced,
     };
   } catch (error) {

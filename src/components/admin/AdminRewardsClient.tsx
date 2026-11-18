@@ -27,6 +27,8 @@ import {
 } from "@/actions/rewards";
 import { updateCompensationConfigAction } from "@/actions/admin/admin-compensation";
 import { cn } from "@/lib/utils";
+import { Play } from "lucide-react";
+import { triggerManualBinaryClosingAction } from "@/actions/admin/admin-compensation";
 
 type AdminRewardsClientProps = {
   initialData: NonNullable<
@@ -103,6 +105,8 @@ export function AdminRewardsClient({
     });
   };
 
+  const [closingDate, setClosingDate] = useState("");
+  const [runningClosing, setRunningClosing] = useState(false);
   const handleSaveSlab = async (slabId: string) => {
     if (!slabForm.milestoneName.trim() || !slabForm.productName.trim()) {
       toast.error("Milestone name and product reward name are required.");
@@ -163,6 +167,22 @@ export function AdminRewardsClient({
       router.refresh();
     } finally {
       setProcessingAction(false);
+    }
+  };
+  const handleManualClosing = async () => {
+    setRunningClosing(true);
+    try {
+      const res = await triggerManualBinaryClosingAction(
+        closingDate || undefined,
+      );
+      if (!res.success) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success(res.message);
+      router.refresh();
+    } finally {
+      setRunningClosing(false);
     }
   };
 
@@ -983,6 +1003,45 @@ export function AdminRewardsClient({
           </div>
         </form>
       )}
+
+      <div className="mt-6 flex flex-col justify-between gap-4 rounded-3xl border border-[#e5e9df] bg-white p-5 shadow-2xs sm:flex-row sm:items-center">
+        <div>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#55784c]">
+            Daily Binary Pair Engine (1:1 AMZ Coins • Max 20 Pairs/Day)
+          </span>
+          <h3 className="mt-1 text-base font-black text-[#1c3324]">
+            Run Manual Binary Closing
+          </h3>
+          <p className="mt-0.5 text-xs text-[#69766a]">
+            Matches available Left &amp; Right AMZ Coins, credits ₹200/pair,
+            applies carry-forward/lapse tie-breakers, and unlocks Milestone
+            Rewards.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <input
+            type="date"
+            aria-label="Business date (IST)"
+            value={closingDate}
+            onChange={(e) => setClosingDate(e.target.value)}
+            className="h-10 rounded-xl border border-[#dce3d8] bg-[#fbfcfa] px-3 text-xs font-bold text-[#1c3324] outline-none focus:border-[#55784c]"
+          />
+          <button
+            type="button"
+            onClick={handleManualClosing}
+            disabled={runningClosing}
+            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#1c3324] px-4 text-xs font-extrabold text-white transition hover:bg-[#315c37] disabled:opacity-50"
+          >
+            {runningClosing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Play size={14} className="text-[#f0ce7c]" />
+            )}
+            {runningClosing ? "Running Closing..." : "Run Closing Now"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

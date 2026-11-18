@@ -97,7 +97,7 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
         role: "MEMBER",
         accountStatus: "ACTIVE",
         kycStatus: "NOT_SUBMITTED",
-        activationStatus: "FREE",
+        activationStatus: "INACTIVE",
       },
     });
 
