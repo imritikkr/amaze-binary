@@ -94,6 +94,11 @@ const navigation: NavGroup[] = [
         icon: Users,
       },
       {
+        label: "Binary Tree",
+        href: "/admin/binary-tree",
+        icon: FolderTree,
+      },
+      {
         label: "KYC Verification",
         href: "/admin/kyc",
         icon: ShieldCheck,
