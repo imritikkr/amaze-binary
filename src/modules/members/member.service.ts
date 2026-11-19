@@ -6,7 +6,6 @@ import {
   updateAncestorLegCounts,
 } from "@/modules/binary/placement.service";
 import { MemberRegisterApiInput } from "@/modules/validators/auth.schema";
-// import { sendEmailVerificationLink } from "@/lib/resend/verification";
 
 export async function registerNewMember(data: MemberRegisterApiInput) {
   const sanitizedEmail =
@@ -82,7 +81,7 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
 
   const hashedPassword = await hashPassword(data.password);
 
-  // 5. Persistence operation (User + BinaryPlacement)
+  // 5. Persistence operation (User + BinaryPlacement + Wallet + Balances + Progress + Cart)
   const createOperations = async (client: any) => {
     const user = await client.user.create({
       data: {
@@ -97,7 +96,7 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
         role: "MEMBER",
         accountStatus: "ACTIVE",
         kycStatus: "NOT_SUBMITTED",
-        activationStatus: "INACTIVE",
+        activationStatus: "FREE",
       },
     });
 
@@ -114,6 +113,41 @@ export async function registerNewMember(data: MemberRegisterApiInput) {
         rightBv: 0,
       },
     });
+
+    await Promise.all([
+      client.wallet.create({
+        data: {
+          userId: user.id,
+          shoppingBalancePaise: 0,
+          earningsBalancePaise: 0,
+        },
+      }),
+      client.binaryBusinessBalance.create({
+        data: {
+          memberId: user.id,
+          leftAvailableCoins: 0,
+          rightAvailableCoins: 0,
+          leftCarryForward: 0,
+          rightCarryForward: 0,
+          leftLapsedTotal: 0,
+          rightLapsedTotal: 0,
+          leftMemberCount: 0,
+          rightMemberCount: 0,
+        },
+      }),
+      client.memberRewardProgress.create({
+        data: {
+          memberId: user.id,
+          lifetimePaidPairs: 0,
+          processedTxIds: [],
+        },
+      }),
+      client.cart.create({
+        data: {
+          userId: user.id,
+        },
+      }),
+    ]);
 
     return { user, placement };
   };

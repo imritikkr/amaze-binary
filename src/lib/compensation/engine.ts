@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   ActivationStatus,
+  BinaryPosition,
   WalletTransactionStatus,
   WalletTransactionType,
 } from "@/generated/prisma";
@@ -18,6 +19,7 @@ function getIstBusinessDate(date = new Date()): string {
 
 /**
  * Checks if a member has Active ID + required personally sponsored Active members on Left & Right legs.
+ * Uses immediate LEFT / RIGHT child treePath prefixes ("/rootUserId/.../parentUserId/userId").
  */
 export async function checkMemberIncomeQualification(
   memberId: string,
@@ -28,7 +30,19 @@ export async function checkMemberIncomeQualification(
     where: { id: memberId },
     select: {
       activationStatus: true,
-      binaryPlacement: { select: { treePath: true } },
+      binaryPlacement: {
+        select: {
+          id: true,
+          treePath: true,
+          children: {
+            select: {
+              id: true,
+              position: true,
+              treePath: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -40,7 +54,12 @@ export async function checkMemberIncomeQualification(
     return { qualified: false, leftActiveDirects: 0, rightActiveDirects: 0 };
   }
 
-  const rootPath = member.binaryPlacement.treePath;
+  const leftChild = member.binaryPlacement.children.find(
+    (c) => c.position === BinaryPosition.LEFT,
+  );
+  const rightChild = member.binaryPlacement.children.find(
+    (c) => c.position === BinaryPosition.RIGHT,
+  );
 
   const activeDirects = await prisma.user.findMany({
     where: {
@@ -48,7 +67,12 @@ export async function checkMemberIncomeQualification(
       activationStatus: ActivationStatus.ACTIVE,
     },
     select: {
-      binaryPlacement: { select: { treePath: true } },
+      binaryPlacement: {
+        select: {
+          id: true,
+          treePath: true,
+        },
+      },
     },
   });
 
@@ -56,9 +80,22 @@ export async function checkMemberIncomeQualification(
   let rightActiveDirects = 0;
 
   for (const d of activeDirects) {
-    const path = d.binaryPlacement?.treePath || "";
-    if (path.startsWith(`${rootPath}/L`)) leftActiveDirects++;
-    else if (path.startsWith(`${rootPath}/R`)) rightActiveDirects++;
+    const dp = d.binaryPlacement;
+    if (!dp) continue;
+
+    if (
+      leftChild &&
+      (dp.id === leftChild.id ||
+        dp.treePath.startsWith(`${leftChild.treePath}/`))
+    ) {
+      leftActiveDirects++;
+    } else if (
+      rightChild &&
+      (dp.id === rightChild.id ||
+        dp.treePath.startsWith(`${rightChild.treePath}/`))
+    ) {
+      rightActiveDirects++;
+    }
   }
 
   return {
@@ -69,52 +106,14 @@ export async function checkMemberIncomeQualification(
 }
 
 /**
- * Section 3: Credit ₹150 Sponsor Income upon downline ID activation (idempotent).
+ * Helper to idempotently credit ₹150 Sponsor Income for a single activated direct referral.
  */
-export async function processSponsorCommissionOnActivation(
-  activatedMemberId: string,
+async function creditSingleSponsorBonus(
+  sponsorId: string,
+  directMember: { id: string; userId: string },
+  commissionInr: number,
 ) {
-  const config = await prisma.compensationConfig.findUnique({
-    where: { singletonKey: "DEFAULT" },
-  });
-
-  if (config && !config.sponsorIncomeEnabled) {
-    return { credited: false, reason: "SPONSOR_INCOME_DISABLED" };
-  }
-
-  const commissionInr = config?.sponsorCommissionInr ?? 150;
-  const minLeft = config?.minLeftActiveDirects ?? 1;
-  const minRight = config?.minRightActiveDirects ?? 1;
-
-  const activatedMember = await prisma.user.findUnique({
-    where: { id: activatedMemberId },
-    select: {
-      id: true,
-      userId: true,
-      activationStatus: true,
-      sponsorId: true,
-    },
-  });
-
-  if (
-    !activatedMember ||
-    activatedMember.activationStatus !== ActivationStatus.ACTIVE ||
-    !activatedMember.sponsorId
-  ) {
-    return { credited: false, reason: "MEMBER_NOT_ACTIVE_OR_NO_SPONSOR" };
-  }
-
-  const sponsorId = activatedMember.sponsorId;
-  const qual = await checkMemberIncomeQualification(
-    sponsorId,
-    minLeft,
-    minRight,
-  );
-  if (!qual.qualified) {
-    return { credited: false, reason: "SPONSOR_NOT_QUALIFIED_BOTH_LEGS" };
-  }
-
-  const idempotencyKey = `SPONSOR:${sponsorId}:${activatedMember.id}`;
+  const idempotencyKey = `SPONSOR:${sponsorId}:${directMember.id}`;
 
   return prisma.$transaction(async (tx) => {
     const existing = await tx.commissionLedger.findUnique({
@@ -139,8 +138,8 @@ export async function processSponsorCommissionOnActivation(
         amountPaise,
         balanceType: "EARNINGS",
         balanceAfterPaise: wallet.earningsBalancePaise,
-        description: `Sponsor Income for activating ${activatedMember.userId}`,
-        reference: activatedMember.userId,
+        description: `Sponsor Income for activating ${directMember.userId}`,
+        reference: directMember.userId,
       },
     });
 
@@ -150,13 +149,109 @@ export async function processSponsorCommissionOnActivation(
         memberId: sponsorId,
         commissionType: "SPONSOR_INCOME",
         amountInr: commissionInr,
-        sourceReference: activatedMember.userId,
+        sourceReference: directMember.userId,
         walletTxId: walletTx.id,
       },
     });
 
     return { credited: true, amountInr: commissionInr };
   });
+}
+
+/**
+ * Section 3: Ensure Wallet exists for activated member & credit ₹150 Sponsor Income
+ * for all uncredited active direct referrals once sponsor meets 1L + 1R qualification.
+ */
+export async function processSponsorCommissionOnActivation(
+  activatedMemberId: string,
+) {
+  const activatedMember = await prisma.user.findUnique({
+    where: { id: activatedMemberId },
+    select: {
+      id: true,
+      userId: true,
+      activationStatus: true,
+      sponsorId: true,
+    },
+  });
+
+  if (
+    !activatedMember ||
+    activatedMember.activationStatus !== ActivationStatus.ACTIVE
+  ) {
+    return { credited: false, reason: "MEMBER_NOT_ACTIVE" };
+  }
+
+  // Always ensure the newly activated member has a Wallet record in MongoDB
+  await prisma.wallet.upsert({
+    where: { userId: activatedMember.id },
+    create: {
+      userId: activatedMember.id,
+      shoppingBalancePaise: 0,
+      earningsBalancePaise: 0,
+    },
+    update: {},
+  });
+
+  if (!activatedMember.sponsorId) {
+    return { credited: false, reason: "NO_SPONSOR" };
+  }
+
+  const config = await prisma.compensationConfig.findUnique({
+    where: { singletonKey: "DEFAULT" },
+  });
+
+  if (config && !config.sponsorIncomeEnabled) {
+    return { credited: false, reason: "SPONSOR_INCOME_DISABLED" };
+  }
+
+  const commissionInr = config?.sponsorCommissionInr ?? 150;
+  const minLeft = config?.minLeftActiveDirects ?? 1;
+  const minRight = config?.minRightActiveDirects ?? 1;
+  const sponsorId = activatedMember.sponsorId;
+
+  const qual = await checkMemberIncomeQualification(
+    sponsorId,
+    minLeft,
+    minRight,
+  );
+  if (!qual.qualified) {
+    return {
+      credited: false,
+      reason: "SPONSOR_NOT_QUALIFIED_BOTH_LEGS",
+      leftActiveDirects: qual.leftActiveDirects,
+      rightActiveDirects: qual.rightActiveDirects,
+    };
+  }
+
+  // Credit sponsor bonus for ALL active direct referrals of this sponsor not yet credited
+  const allActiveDirects = await prisma.user.findMany({
+    where: {
+      sponsorId,
+      activationStatus: ActivationStatus.ACTIVE,
+    },
+    select: {
+      id: true,
+      userId: true,
+    },
+  });
+
+  let newlyCreditedCount = 0;
+  for (const direct of allActiveDirects) {
+    const res = await creditSingleSponsorBonus(
+      sponsorId,
+      direct,
+      commissionInr,
+    );
+    if (res.credited) newlyCreditedCount++;
+  }
+
+  return {
+    credited: newlyCreditedCount > 0,
+    creditedCount: newlyCreditedCount,
+    amountInr: newlyCreditedCount * commissionInr,
+    reason: newlyCreditedCount > 0 ? "CREDITED" : "ALREADY_CREDITED",
+  };
 }
 
 /**
@@ -310,7 +405,7 @@ export async function runDailyBinaryMatchingForMember(
           tieBreakerUsed = "MEMBER_COUNT";
         } else {
           // Tie-breaker 3: Leg whose relevant member became Active first
-          carriedLeg = "LEFT"; // Default to earlier active timestamp comparison
+          carriedLeg = "LEFT";
           carriedCoins = remLeft;
           lapsedLeg = "RIGHT";
           lapsedCoins = remRight;
@@ -364,9 +459,10 @@ export async function runDailyBinaryMatchingForMember(
 
   return { processed: true, summary };
 }
-// Add to src/lib/compensation/engine.ts
-import { BinaryPosition } from "@/generated/prisma";
 
+/**
+ * Propagates order AMZ Coins up the binary tree (idempotent per orderId).
+ */
 export async function propagateOrderCoinsToUpline(input: {
   memberId: string;
   coins: number;
@@ -398,7 +494,12 @@ export async function propagateOrderCoinsToUpline(input: {
     let legPosition: BinaryPosition = startNode.position;
 
     while (currentParentId) {
-      const parent = await tx.binaryPlacement.findUnique({
+      const parent: {
+        id: string;
+        userId: string;
+        parentId: string | null;
+        position: BinaryPosition;
+      } | null = await tx.binaryPlacement.findUnique({
         where: { id: currentParentId },
         select: { id: true, userId: true, parentId: true, position: true },
       });
