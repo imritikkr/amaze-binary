@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+export const dynamic = "force-dynamic";
+
 function SuccessCardContent() {
   const searchParams = useSearchParams();
 
@@ -32,9 +34,9 @@ function SuccessCardContent() {
 
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [referralLink, setReferralLink] = useState("");
 
   useEffect(() => {
-    // Only read a password if your registration flow deliberately saved it.
     const savedPassword = sessionStorage.getItem("registrationPassword");
     if (savedPassword) {
       setPassword(savedPassword);
@@ -42,9 +44,8 @@ function SuccessCardContent() {
     }
   }, []);
 
-  const [referralLink, setReferralLink] = useState("");
-
   useEffect(() => {
+    if (!userId) return;
     setReferralLink(
       `${window.location.origin}/register?sponsor=${encodeURIComponent(userId)}`,
     );
@@ -91,7 +92,7 @@ function SuccessCardContent() {
       {secret && (
         <button
           type="button"
-          onClick={() => setShowPassword(!showPassword)}
+          onClick={() => setShowPassword((prev) => !prev)}
           className="rounded-lg p-2 text-[#71816d] hover:bg-[#f0f4ed]"
           aria-label={showPassword ? "Hide password" : "Show password"}
         >
@@ -156,6 +157,7 @@ function SuccessCardContent() {
                   type="button"
                   disabled={!userId}
                   onClick={() => copyToClipboard(userId, "Member ID")}
+                  aria-label="Copy Member ID"
                   className="rounded-xl bg-[#1c3324] p-3 text-white transition hover:bg-[#2c4935] disabled:opacity-40"
                 >
                   <Copy size={17} />
@@ -187,6 +189,15 @@ function SuccessCardContent() {
                   copy
                 />
               )}
+              {password && (
+                <DetailRow
+                  icon={LockKeyhole}
+                  label="Password"
+                  value={password}
+                  copy
+                  secret
+                />
+              )}
             </div>
 
             <div className="mt-5 rounded-2xl border border-[#e9ede6] bg-[#f8faf6] p-4">
@@ -209,16 +220,14 @@ function SuccessCardContent() {
               </button>
             </div>
 
-            <div className="mt-5 flex gap-3 rounded-xl bg-[#fff8e9] p-3 text-left">
-              <div className="mb-7 flex justify-center">
-                <Link href="/">
-                  <img
-                    src="/amaze-logo.png"
-                    alt="Amaze Ayurveda"
-                    className="h-12 w-auto object-contain"
-                  />
-                </Link>
-              </div>
+            <div className="mt-5 flex items-center gap-3 rounded-xl bg-[#fff8e9] p-3.5 text-left">
+              <Link href="/" className="shrink-0">
+                <img
+                  src="/amaze-logo.png"
+                  alt="Amaze Ayurveda"
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
               <p className="text-[11px] leading-relaxed text-[#78633c]">
                 Keep your Member ID and login credentials safe. Never share your
                 password or OTP with anyone.
