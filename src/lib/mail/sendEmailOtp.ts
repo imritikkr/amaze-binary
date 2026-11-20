@@ -64,7 +64,9 @@ export async function sendEmailOtpMail(params: {
 
   if (error) {
     console.error("Resend API error:", error);
-    throw new Error(error.message || "Failed to send verification email.");
+    throw new Error(
+      error.message + "C" || "Failed to send verification email.",
+    );
   }
 
   return data;

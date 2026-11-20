@@ -105,6 +105,7 @@ model User {
   commissionLedgers     CommissionLedger[]
 
   activatedAt DateTime?
+  wishlist    Wishlist?
 
   @@index([sponsorId])
   @@index([accountStatus])
@@ -453,10 +454,11 @@ model Product {
   bogoEligibleProducts  ProductBogoEligibleProduct[] @relation("BogoMainProduct")
   eligibleAsFreeProduct ProductBogoEligibleProduct[] @relation("BogoFreeProduct")
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  wishlistItems WishlistItem[]
 
   @@index([status, createdAt])
   @@index([categoryId, status])
@@ -1013,4 +1015,52 @@ model CommissionLedger {
 
   @@index([memberId, createdAt])
   @@map("commission_transactions")
+}
+
+enum AnnouncementIcon {
+  TAG
+  SPARKLES
+}
+
+model FlashAnnouncement {
+  id        String           @id @default(auto()) @map("_id") @db.ObjectId
+  badge     String? // e.g., "100% PURE", "MEMBER OFFER"
+  text      String // Main ticker message
+  href      String? // Optional link e.g., "/shop"
+  ctaLabel  String? // Optional button label e.g., "Shop Now"
+  icon      AnnouncementIcon @default(SPARKLES)
+  sortOrder Int              @default(0)
+  isActive  Boolean          @default(true)
+  startsAt  DateTime?
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+  @@map("flash_announcements")
+}
+
+model Wishlist {
+  id        String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String         @unique @db.ObjectId
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("wishlists")
+}
+
+model WishlistItem {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  wishlistId String   @db.ObjectId
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String   @db.ObjectId
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@index([productId])
+  @@map("wishlist_items")
 }

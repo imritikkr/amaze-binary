@@ -76,9 +76,6 @@ export default function DashboardHomePage() {
 
       {/* 5. Profile Completion & Action Shortcuts */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          <ProfileCompletion completionRate={data.profile.completionRate} />
-        </div>
         <div className="lg:col-span-2">
           <QuickActionsGrid userId={data.profile.userId} />
         </div>

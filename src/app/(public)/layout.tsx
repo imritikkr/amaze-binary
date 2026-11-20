@@ -2,17 +2,15 @@
 import { AppHeader } from "@/components/layout/app-header";
 import { Footer } from "@/components/layout/footer";
 import { getCartCountServer } from "@/actions/shop";
-import { getActiveFlashOffers } from "@/actions/offers";
+import { getActiveFlashAnnouncements } from "@/actions/admin/admin-flash-announcement";
 
 export default async function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [cartCount, announcements] = await Promise.all([
-    getCartCountServer(),
-    getActiveFlashOffers(),
-  ]);
+  const [cartCount] = await Promise.all([getCartCountServer()]);
+  const announcements = await getActiveFlashAnnouncements();
 
   return (
     <div className="flex min-h-screen flex-col">

@@ -1,7 +1,7 @@
 // src/components/shop/StorefrontClient.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import {
   Coins,
   Filter,
   Gift,
+  Heart,
   Leaf,
   Search,
   ShoppingBag,
@@ -22,6 +23,8 @@ import {
   type ShopCategoryItem,
   type ShopProductItem,
 } from "@/actions/shop";
+import { toggleWishlistItem } from "@/actions/shop/wishlist";
+import { APP_LINKS } from "@/constants/links";
 import { cn } from "@/lib/utils";
 
 type StorefrontClientProps = {
@@ -32,6 +35,7 @@ type StorefrontClientProps = {
   initialSort: string;
   initialInStock: boolean;
   initialBogo: boolean;
+  initialWishlistedIds?: string[];
 };
 
 export function StorefrontClient({
@@ -42,11 +46,21 @@ export function StorefrontClient({
   initialSort,
   initialInStock,
   initialBogo,
+  initialWishlistedIds = [],
 }: StorefrontClientProps) {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState(initialQuery);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [addedId, setAddedId] = useState<string | null>(null);
+
+  // Track wishlisted product IDs with optimistic updates
+  const [wishlistedIds, setWishlistedIds] = useState<Set<string>>(
+    () => new Set(initialWishlistedIds),
+  );
+  const [togglingWishlistId, setTogglingWishlistId] = useState<string | null>(
+    null,
+  );
+  const [, startWishlistTransition] = useTransition();
 
   const pushFilters = (overrides: {
     category?: string;
@@ -74,6 +88,62 @@ export function StorefrontClient({
 
     const qs = params.toString();
     router.push(qs ? `/shop?${qs}` : "/shop");
+  };
+
+  const handleToggleWishlist = (
+    e: React.MouseEvent,
+    product: ShopProductItem,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (togglingWishlistId === product.id) return;
+
+    const wasWishlisted = wishlistedIds.has(product.id);
+
+    // Optimistically toggle heart state
+    setWishlistedIds((prev) => {
+      const next = new Set(prev);
+      if (wasWishlisted) next.delete(product.id);
+      else next.add(product.id);
+      return next;
+    });
+    setTogglingWishlistId(product.id);
+
+    startWishlistTransition(async () => {
+      try {
+        const res = await toggleWishlistItem(product.id);
+
+        if (!res.success) {
+          // Revert optimistic state
+          setWishlistedIds((prev) => {
+            const next = new Set(prev);
+            if (wasWishlisted) next.add(product.id);
+            else next.delete(product.id);
+            return next;
+          });
+
+          if (res.requiresAuth) {
+            toast.info("Sign in required", {
+              description: "Please log in to save products to your wishlist.",
+            });
+            router.push(APP_LINKS.SIGN_IN);
+            return;
+          }
+
+          toast.error(res.message);
+          return;
+        }
+
+        toast.success(
+          res.wishlisted
+            ? `${product.name} moved to wishlist`
+            : `${product.name} removed from wishlist`,
+        );
+      } finally {
+        setTogglingWishlistId(null);
+      }
+    });
   };
 
   const handleAddToCart = async (product: ShopProductItem) => {
@@ -150,10 +220,21 @@ export function StorefrontClient({
         <div className="rounded-3xl border border-[#e5e9df] bg-white p-6 shadow-2xs sm:p-8">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#edf2e9] px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#55784c]">
-                <Sparkles size={12} className="text-[#b78a37]" />
-                GMP Certified Ayurvedic Store
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#edf2e9] px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#55784c]">
+                  <Sparkles size={12} className="text-[#b78a37]" />
+                  GMP Certified Ayurvedic Store
+                </span>
+
+                <Link
+                  href="/wishlist"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50/70 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-rose-700 transition hover:bg-rose-100"
+                >
+                  <Heart size={11} className="fill-rose-500 text-rose-500" />
+                  Wishlist ({wishlistedIds.size})
+                </Link>
+              </div>
+
               <h1
                 className="mt-3 text-3xl font-black tracking-tight text-[#1c3324] sm:text-4xl"
                 style={{ fontFamily: "Georgia, serif" }}
@@ -331,33 +412,37 @@ export function StorefrontClient({
                   : 0;
               const isAdding = addingId === product.id;
               const isAdded = addedId === product.id;
+              const isWishlisted = wishlistedIds.has(product.id);
+              const isTogglingWishlist = togglingWishlistId === product.id;
 
               return (
                 <article
                   key={product.id}
                   className="group flex flex-col overflow-hidden rounded-3xl border border-[#e5e9df] bg-white p-3.5 shadow-[0_6px_22px_rgba(28,51,36,0.04)] transition-all duration-300 hover:-translate-y-1 hover:border-[#c8d2c0] hover:shadow-[0_16px_36px_rgba(28,51,36,0.09)]"
                 >
-                  {/* Product Image */}
-                  <Link
-                    href={`/shop/${product.slug}`}
-                    className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#f4f7f0]"
-                  >
-                    {product.image ? (
-                      <Image
-                        src={product.image}
-                        alt={product.name}
-                        fill
-                        sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-[#55784c]/40">
-                        <Leaf size={42} />
-                      </div>
-                    )}
+                  {/* Product Image + Wishlist Overlay */}
+                  <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#f4f7f0]">
+                    <Link
+                      href={`/shop/product/${product.slug}`}
+                      className="block h-full w-full"
+                    >
+                      {product.image ? (
+                        <Image
+                          src={product.image}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw"
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[#55784c]/40">
+                          <Leaf size={42} />
+                        </div>
+                      )}
+                    </Link>
 
                     {/* Top Left Badges */}
-                    <div className="absolute left-3 top-3 flex flex-col gap-1.5">
+                    <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-1.5">
                       {discountPct > 0 && (
                         <span className="rounded-lg bg-[#1c3324] px-2.5 py-1 text-[10px] font-extrabold text-white shadow-2xs">
                           {discountPct}% OFF
@@ -371,14 +456,48 @@ export function StorefrontClient({
                       )}
                     </div>
 
+                    {/* Top Right Wishlist Button */}
+                    <button
+                      type="button"
+                      disabled={isTogglingWishlist}
+                      onClick={(e) => handleToggleWishlist(e, product)}
+                      aria-label={
+                        isWishlisted
+                          ? `Remove ${product.name} from wishlist`
+                          : `Move ${product.name} to wishlist`
+                      }
+                      aria-pressed={isWishlisted}
+                      title={
+                        isWishlisted ? "Saved in Wishlist" : "Move to Wishlist"
+                      }
+                      className={cn(
+                        "absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border shadow-xs backdrop-blur-xs transition active:scale-90 disabled:opacity-60",
+                        isWishlisted
+                          ? "border-rose-200 bg-rose-50 text-rose-600"
+                          : "border-white/80 bg-white/90 text-[#5c6c59] hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600",
+                      )}
+                    >
+                      <Heart
+                        size={16}
+                        className={cn(
+                          "transition-transform duration-200",
+                          isWishlisted &&
+                            "scale-110 fill-rose-500 text-rose-500",
+                        )}
+                      />
+                    </button>
+
                     {outOfStock && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[1px]">
+                      <Link
+                        href={`/shop/${product.slug}`}
+                        className="absolute inset-0 flex items-center justify-center bg-black/45 backdrop-blur-[1px]"
+                      >
                         <span className="rounded-full bg-white px-3.5 py-1 text-xs font-black text-red-600">
                           Out of Stock
                         </span>
-                      </div>
+                      </Link>
                     )}
-                  </Link>
+                  </div>
 
                   {/* Product Info */}
                   <div className="flex flex-1 flex-col px-1.5 pt-4">
@@ -402,7 +521,7 @@ export function StorefrontClient({
                     </div>
 
                     <Link
-                      href={`/shop/${product.slug}`}
+                      href={`/shop/product/${product.slug}`}
                       className="mt-1.5 line-clamp-1 text-base font-bold text-[#1c3324] transition group-hover:text-[#315c37]"
                       style={{ fontFamily: "Georgia, serif" }}
                     >
@@ -425,14 +544,14 @@ export function StorefrontClient({
                       )}
                     </div>
 
-                    {/* Add to Cart Button */}
-                    <div className="mt-3 pt-1">
+                    {/* Add to Cart + Quick Wishlist Action */}
+                    <div className="mt-3 flex items-center gap-2 pt-1">
                       <button
                         type="button"
                         disabled={outOfStock || isAdding}
                         onClick={() => handleAddToCart(product)}
                         className={cn(
-                          "flex h-11 w-full items-center justify-center gap-2 rounded-xl text-xs font-extrabold uppercase tracking-wider text-white transition",
+                          "flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-extrabold uppercase tracking-wider text-white transition",
                           outOfStock
                             ? "cursor-not-allowed bg-gray-200 text-gray-500"
                             : isAdded
@@ -455,6 +574,33 @@ export function StorefrontClient({
                                 : "Add to Cart"}
                           </>
                         )}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isTogglingWishlist}
+                        onClick={(e) => handleToggleWishlist(e, product)}
+                        aria-label={
+                          isWishlisted
+                            ? "Remove from wishlist"
+                            : "Move to wishlist"
+                        }
+                        title={
+                          isWishlisted ? "In Wishlist" : "Move to Wishlist"
+                        }
+                        className={cn(
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition active:scale-95",
+                          isWishlisted
+                            ? "border-rose-200 bg-rose-50 text-rose-600"
+                            : "border-[#dce3d8] bg-[#fafbf8] text-[#5c6c59] hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600",
+                        )}
+                      >
+                        <Heart
+                          size={16}
+                          className={cn(
+                            isWishlisted && "fill-rose-500 text-rose-500",
+                          )}
+                        />
                       </button>
                     </div>
                   </div>

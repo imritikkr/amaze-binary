@@ -110,6 +110,11 @@ const navigation: NavGroup[] = [
     title: "REWARDS, OFFERS & SYSTEM",
     items: [
       {
+        label: "Flash Announcement",
+        href: "/admin/announcements",
+        icon: Award,
+      },
+      {
         label: "Rewards & Slabs",
         href: "/admin/rewards",
         icon: Award,
