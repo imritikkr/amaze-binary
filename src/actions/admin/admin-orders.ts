@@ -368,69 +368,75 @@ export async function updateAdminOrderStatusAction(input: {
         ? OrderStatus.PROCESSING
         : input.status;
 
-    await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { id: existing.id },
-        data: {
-          status: nextOrderStatus,
-          paymentStatus: nextPaymentStatus,
-        },
-      });
-
-      if (existing.payment && input.paymentStatus) {
-        await tx.payment.update({
-          where: { id: existing.payment.id },
-          data: { status: input.paymentStatus },
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.order.update({
+          where: { id: existing.id },
+          data: {
+            status: nextOrderStatus,
+            paymentStatus: nextPaymentStatus,
+          },
         });
-      }
 
-      // Deduct physical inventory (paid + BOGO free units) once when payment becomes PAID
-      if (isMarkingPaidNow) {
-        for (const item of existing.items) {
-          const totalUnits = item.quantity + item.freeQuantity;
-          if (totalUnits > 0) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: {
-                stockQuantity: { decrement: totalUnits },
-              },
-            });
-          }
+        if (existing.payment && input.paymentStatus) {
+          await tx.payment.update({
+            where: { id: existing.payment.id },
+            data: { status: input.paymentStatus },
+          });
         }
-      }
 
-      // Restore product stock & coupon usage if an order is cancelled
-      if (isCancellingNow) {
-        if (
-          existing.paymentStatus === OrderPaymentStatus.PAID ||
-          input.restoreStockOnCancel === true
-        ) {
+        // Deduct physical inventory (paid + BOGO free units) once when payment becomes PAID
+        if (isMarkingPaidNow) {
           for (const item of existing.items) {
             const totalUnits = item.quantity + item.freeQuantity;
             if (totalUnits > 0) {
               await tx.product.update({
                 where: { id: item.productId },
                 data: {
-                  stockQuantity: { increment: totalUnits },
+                  stockQuantity: { decrement: totalUnits },
                 },
               });
             }
           }
         }
 
-        if (existing.couponCode) {
-          await tx.coupon.updateMany({
-            where: {
-              code: existing.couponCode,
-              usedCount: { gt: 0 },
-            },
-            data: {
-              usedCount: { decrement: 1 },
-            },
-          });
+        // Restore product stock & coupon usage if an order is cancelled
+        if (isCancellingNow) {
+          if (
+            existing.paymentStatus === OrderPaymentStatus.PAID ||
+            input.restoreStockOnCancel === true
+          ) {
+            for (const item of existing.items) {
+              const totalUnits = item.quantity + item.freeQuantity;
+              if (totalUnits > 0) {
+                await tx.product.update({
+                  where: { id: item.productId },
+                  data: {
+                    stockQuantity: { increment: totalUnits },
+                  },
+                });
+              }
+            }
+          }
+
+          if (existing.couponCode) {
+            await tx.coupon.updateMany({
+              where: {
+                code: existing.couponCode,
+                usedCount: { gt: 0 },
+              },
+              data: {
+                usedCount: { decrement: 1 },
+              },
+            });
+          }
         }
-      }
-    });
+      },
+      {
+        maxWait: 10000,
+        timeout: 20000,
+      },
+    );
 
     // Trigger ID Activation, Upline Binary AMZ Coins, & Sponsor Income when PAID
     let activationSynced = false;
@@ -561,195 +567,3 @@ export async function updateAdminOrderStatusAction(input: {
     };
   }
 }
-// export async function updateAdminOrderStatusAction(input: {
-//   orderId: string;
-//   status: OrderStatus;
-//   paymentStatus?: OrderPaymentStatus;
-//   restoreStockOnCancel?: boolean;
-// }): Promise<{
-//   success: boolean;
-//   message: string;
-//   activationSynced?: boolean;
-// }> {
-//   const admin = await requireAdminSession();
-//   if (!admin) {
-//     return { success: false, message: "Unauthorized: Admin access required." };
-//   }
-
-//   try {
-//     const existing = await prisma.order.findUnique({
-//       where: { id: input.orderId },
-//       include: {
-//         items: true,
-//         payment: true,
-//         user: {
-//           select: {
-//             id: true,
-//             activationStatus: true,
-//             activatedAt: true,
-//           },
-//         },
-//       },
-//     });
-
-//     if (!existing) {
-//       return { success: false, message: "Order not found." };
-//     }
-
-//     const nextPaymentStatus = input.paymentStatus ?? existing.paymentStatus;
-//     const isMarkingPaidNow =
-//       existing.paymentStatus !== OrderPaymentStatus.PAID &&
-//       nextPaymentStatus === OrderPaymentStatus.PAID;
-
-//     const isCancellingNow =
-//       input.status === OrderStatus.CANCELLED &&
-//       existing.status !== OrderStatus.CANCELLED;
-
-//     // Auto-advance order from PENDING to PROCESSING when payment is verified
-//     const nextOrderStatus =
-//       isMarkingPaidNow &&
-//       existing.status === OrderStatus.PENDING &&
-//       input.status === OrderStatus.PENDING
-//         ? OrderStatus.PROCESSING
-//         : input.status;
-
-//     await prisma.$transaction(async (tx) => {
-//       await tx.order.update({
-//         where: { id: existing.id },
-//         data: {
-//           status: nextOrderStatus,
-//           paymentStatus: nextPaymentStatus,
-//         },
-//       });
-
-//       if (existing.payment && input.paymentStatus) {
-//         await tx.payment.update({
-//           where: { id: existing.payment.id },
-//           data: { status: input.paymentStatus },
-//         });
-//       }
-
-//       // Deduct physical inventory (paid + BOGO free units) once when payment becomes PAID
-//       if (isMarkingPaidNow) {
-//         for (const item of existing.items) {
-//           const totalUnits = item.quantity + item.freeQuantity;
-//           if (totalUnits > 0) {
-//             await tx.product.update({
-//               where: { id: item.productId },
-//               data: {
-//                 stockQuantity: { decrement: totalUnits },
-//               },
-//             });
-//           }
-//         }
-//       }
-
-//       // Restore product stock & coupon usage if an order is cancelled
-//       if (isCancellingNow) {
-//         if (
-//           existing.paymentStatus === OrderPaymentStatus.PAID ||
-//           input.restoreStockOnCancel === true
-//         ) {
-//           for (const item of existing.items) {
-//             const totalUnits = item.quantity + item.freeQuantity;
-//             if (totalUnits > 0) {
-//               await tx.product.update({
-//                 where: { id: item.productId },
-//                 data: {
-//                   stockQuantity: { increment: totalUnits },
-//                 },
-//               });
-//             }
-//           }
-//         }
-
-//         if (existing.couponCode) {
-//           await tx.coupon.updateMany({
-//             where: {
-//               code: existing.couponCode,
-//               usedCount: { gt: 0 },
-//             },
-//             data: {
-//               usedCount: { decrement: 1 },
-//             },
-//           });
-//         }
-//       }
-//     });
-
-//     // Trigger ID Activation, Upline Binary AMZ Coins, & Sponsor Income when PAID
-//     let activationSynced = false;
-//     let sponsorCredited = false;
-
-//     if (nextPaymentStatus === OrderPaymentStatus.PAID) {
-//       const wasActiveBefore =
-//         existing.user.activationStatus === ActivationStatus.ACTIVE;
-
-//       const activation = await evaluateAndSyncMemberActivation(existing.userId);
-//       activationSynced = Boolean(activation?.isActive);
-
-//       const justActivated = !wasActiveBefore && activationSynced;
-
-//       if (justActivated && !existing.user.activatedAt) {
-//         await prisma.user.update({
-//           where: { id: existing.userId },
-//           data: { activatedAt: new Date() },
-//         });
-//       }
-
-//       const totalOrderCoins = Number(
-//         existing.items
-//           .reduce(
-//             (sum, item) => sum + Number(item.amzcoins || 0) * item.quantity,
-//             0,
-//           )
-//           .toFixed(4),
-//       );
-
-//       // Propagate AMZ Coins up the binary tree (idempotent per orderId)
-//       if (totalOrderCoins > 0 || justActivated) {
-//         await propagateOrderCoinsToUpline({
-//           memberId: existing.userId,
-//           coins: totalOrderCoins,
-//           incrementActiveMemberCount: justActivated,
-//           sourceOrderId: existing.id,
-//         });
-//       }
-
-//       // Credit ₹150 Sponsor Income if member ID is ACTIVE (idempotent per memberId)
-//       if (activationSynced) {
-//         const sponsorRes = await processSponsorCommissionOnActivation(
-//           existing.userId,
-//         );
-//         sponsorCredited = Boolean(sponsorRes?.credited);
-//       }
-//     }
-
-//     revalidatePath("/admin/orders");
-//     revalidatePath("/admin/products");
-//     revalidatePath("/admin/coupons");
-//     revalidatePath("/dashboard");
-//     revalidatePath("/dashboard/wallet");
-//     revalidatePath("/dashboard/team");
-//     revalidatePath("/shop");
-
-//     const notes: string[] = [];
-//     if (activationSynced) notes.push("member ID active");
-//     if (sponsorCredited) notes.push("₹150 sponsor commission credited");
-
-//     return {
-//       success: true,
-//       message:
-//         notes.length > 0
-//           ? `Order #${existing.orderNumber} updated to ${nextOrderStatus} (${notes.join(" & ")}).`
-//           : `Order #${existing.orderNumber} updated to ${nextOrderStatus}.`,
-//       activationSynced,
-//     };
-//   } catch (error) {
-//     console.error("updateAdminOrderStatusAction error:", error);
-//     return {
-//       success: false,
-//       message: "Failed to update order status.",
-//     };
-//   }
-// }

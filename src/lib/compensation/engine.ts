@@ -8,6 +8,11 @@ import {
 } from "@/generated/prisma";
 import { processPaidPair } from "@/lib/rewards/engine";
 
+const TX_OPTIONS = {
+  maxWait: 10000,
+  timeout: 30000,
+};
+
 function getIstBusinessDate(date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -19,7 +24,7 @@ function getIstBusinessDate(date = new Date()): string {
 
 /**
  * Checks if a member has Active ID + required personally sponsored Active members on Left & Right legs.
- * Uses immediate LEFT / RIGHT child treePath prefixes ("/rootUserId/.../parentUserId/userId").
+ * Supports both direct child placement (`parentId === memberPlacement.id`) and deep spillover descendants via `treePath`.
  */
 export async function checkMemberIncomeQualification(
   memberId: string,
@@ -54,6 +59,7 @@ export async function checkMemberIncomeQualification(
     return { qualified: false, leftActiveDirects: 0, rightActiveDirects: 0 };
   }
 
+  const rootPlacementId = member.binaryPlacement.id;
   const leftChild = member.binaryPlacement.children.find(
     (c) => c.position === BinaryPosition.LEFT,
   );
@@ -70,6 +76,8 @@ export async function checkMemberIncomeQualification(
       binaryPlacement: {
         select: {
           id: true,
+          parentId: true,
+          position: true,
           treePath: true,
         },
       },
@@ -83,16 +91,25 @@ export async function checkMemberIncomeQualification(
     const dp = d.binaryPlacement;
     if (!dp) continue;
 
+    const isDirectLeftChild =
+      dp.parentId === rootPlacementId && dp.position === BinaryPosition.LEFT;
+    const isDirectRightChild =
+      dp.parentId === rootPlacementId && dp.position === BinaryPosition.RIGHT;
+
     if (
-      leftChild &&
-      (dp.id === leftChild.id ||
-        dp.treePath.startsWith(`${leftChild.treePath}/`))
+      isDirectLeftChild ||
+      (leftChild &&
+        (dp.id === leftChild.id ||
+          dp.treePath === leftChild.treePath ||
+          dp.treePath.startsWith(`${leftChild.treePath}/`)))
     ) {
       leftActiveDirects++;
     } else if (
-      rightChild &&
-      (dp.id === rightChild.id ||
-        dp.treePath.startsWith(`${rightChild.treePath}/`))
+      isDirectRightChild ||
+      (rightChild &&
+        (dp.id === rightChild.id ||
+          dp.treePath === rightChild.treePath ||
+          dp.treePath.startsWith(`${rightChild.treePath}/`)))
     ) {
       rightActiveDirects++;
     }
@@ -155,7 +172,7 @@ async function creditSingleSponsorBonus(
     });
 
     return { credited: true, amountInr: commissionInr };
-  });
+  }, TX_OPTIONS);
 }
 
 /**
@@ -182,7 +199,7 @@ export async function processSponsorCommissionOnActivation(
     return { credited: false, reason: "MEMBER_NOT_ACTIVE" };
   }
 
-  // Always ensure the newly activated member has a Wallet record in MongoDB
+  // Ensure the newly activated member has a Wallet record in MongoDB
   await prisma.wallet.upsert({
     where: { userId: activatedMember.id },
     create: {
@@ -390,7 +407,6 @@ export async function runDailyBinaryMatchingForMember(
         lapsedCoins = remLeft;
         tieBreakerUsed = "COINS";
       } else {
-        // Equal remaining AMZ Coins -> Tie-breaker 2: Higher leg member count
         if (balance.leftMemberCount > balance.rightMemberCount) {
           carriedLeg = "LEFT";
           carriedCoins = remLeft;
@@ -404,7 +420,6 @@ export async function runDailyBinaryMatchingForMember(
           lapsedCoins = remLeft;
           tieBreakerUsed = "MEMBER_COUNT";
         } else {
-          // Tie-breaker 3: Leg whose relevant member became Active first
           carriedLeg = "LEFT";
           carriedCoins = remLeft;
           lapsedLeg = "RIGHT";
@@ -450,7 +465,7 @@ export async function runDailyBinaryMatchingForMember(
       carriedForwardLeg: carriedLeg,
       carriedForwardCoins: carriedCoins,
     };
-  });
+  }, TX_OPTIONS);
 
   // Section 6: Feed each verified ₹200 binary payout transaction into the independent Reward Engine
   for (const txId of verifiedTxIdsToProcess) {
@@ -462,6 +477,8 @@ export async function runDailyBinaryMatchingForMember(
 
 /**
  * Propagates order AMZ Coins up the binary tree (idempotent per orderId).
+ * Collects ancestor chain outside the transaction and executes writes in parallel
+ * to prevent Prisma P2028 transaction timeouts on MongoDB Atlas.
  */
 export async function propagateOrderCoinsToUpline(input: {
   memberId: string;
@@ -477,80 +494,107 @@ export async function propagateOrderCoinsToUpline(input: {
   } = input;
   if (coins <= 0 && !incrementActiveMemberCount) return { propagated: false };
 
+  const ledgerKey = `ORDER_BV:${sourceOrderId}`;
+  const alreadyProcessed = await prisma.commissionLedger.findUnique({
+    where: { idempotencyKey: ledgerKey },
+    select: { id: true },
+  });
+  if (alreadyProcessed) return { propagated: false };
+
   const startNode = await prisma.binaryPlacement.findUnique({
     where: { userId: memberId },
     select: { parentId: true, position: true },
   });
   if (!startNode?.parentId) return { propagated: false };
 
+  // 1. Walk ancestor chain outside the interactive transaction
+  const ancestorUpdates: Array<{
+    placementId: string;
+    userId: string;
+    isLeft: boolean;
+  }> = [];
+
+  const visited = new Set<string>();
+  let currentParentId: string | null = startNode.parentId;
+  let legPosition: BinaryPosition = startNode.position;
+
+  while (currentParentId && !visited.has(currentParentId)) {
+    visited.add(currentParentId);
+
+    const parent: {
+      id: string;
+      userId: string;
+      parentId: string | null;
+      position: BinaryPosition;
+    } | null = await prisma.binaryPlacement.findUnique({
+      where: { id: currentParentId },
+      select: { id: true, userId: true, parentId: true, position: true },
+    });
+
+    if (!parent) break;
+
+    ancestorUpdates.push({
+      placementId: parent.id,
+      userId: parent.userId,
+      isLeft: legPosition === BinaryPosition.LEFT,
+    });
+
+    legPosition = parent.position;
+    currentParentId = parent.parentId;
+  }
+
+  if (ancestorUpdates.length === 0) return { propagated: false };
+
+  // 2. Apply all ancestor updates & idempotency ledger atomically in parallel
   return prisma.$transaction(async (tx) => {
-    const ledgerKey = `ORDER_BV:${sourceOrderId}`;
     const exists = await tx.commissionLedger.findUnique({
       where: { idempotencyKey: ledgerKey },
     });
     if (exists) return { propagated: false };
 
-    let currentParentId: string | null = startNode.parentId;
-    let legPosition: BinaryPosition = startNode.position;
-
-    while (currentParentId) {
-      const parent: {
-        id: string;
-        userId: string;
-        parentId: string | null;
-        position: BinaryPosition;
-      } | null = await tx.binaryPlacement.findUnique({
-        where: { id: currentParentId },
-        select: { id: true, userId: true, parentId: true, position: true },
-      });
-      if (!parent) break;
-
-      const isLeft = legPosition === BinaryPosition.LEFT;
-
-      await tx.binaryPlacement.update({
-        where: { id: parent.id },
-        data: isLeft
-          ? {
-              leftBv: { increment: coins },
-              ...(incrementActiveMemberCount
-                ? { leftCount: { increment: 1 } }
-                : {}),
-            }
-          : {
-              rightBv: { increment: coins },
-              ...(incrementActiveMemberCount
-                ? { rightCount: { increment: 1 } }
-                : {}),
-            },
-      });
-
-      await tx.binaryBusinessBalance.upsert({
-        where: { memberId: parent.userId },
-        create: {
-          memberId: parent.userId,
-          leftAvailableCoins: isLeft ? coins : 0,
-          rightAvailableCoins: isLeft ? 0 : coins,
-          leftMemberCount: isLeft && incrementActiveMemberCount ? 1 : 0,
-          rightMemberCount: !isLeft && incrementActiveMemberCount ? 1 : 0,
-        },
-        update: isLeft
-          ? {
-              leftAvailableCoins: { increment: coins },
-              ...(incrementActiveMemberCount
-                ? { leftMemberCount: { increment: 1 } }
-                : {}),
-            }
-          : {
-              rightAvailableCoins: { increment: coins },
-              ...(incrementActiveMemberCount
-                ? { rightMemberCount: { increment: 1 } }
-                : {}),
-            },
-      });
-
-      legPosition = parent.position;
-      currentParentId = parent.parentId;
-    }
+    await Promise.all(
+      ancestorUpdates.flatMap(({ placementId, userId, isLeft }) => [
+        tx.binaryPlacement.update({
+          where: { id: placementId },
+          data: isLeft
+            ? {
+                leftBv: { increment: coins },
+                ...(incrementActiveMemberCount
+                  ? { leftCount: { increment: 1 } }
+                  : {}),
+              }
+            : {
+                rightBv: { increment: coins },
+                ...(incrementActiveMemberCount
+                  ? { rightCount: { increment: 1 } }
+                  : {}),
+              },
+        }),
+        tx.binaryBusinessBalance.upsert({
+          where: { memberId: userId },
+          create: {
+            memberId: userId,
+            leftAvailableCoins: isLeft ? coins : 0,
+            rightAvailableCoins: isLeft ? 0 : coins,
+            leftMemberCount: isLeft && incrementActiveMemberCount ? 1 : 0,
+            rightMemberCount: !isLeft && incrementActiveMemberCount ? 1 : 0,
+          },
+          update: isLeft
+            ? {
+                leftAvailableCoins: { increment: coins },
+                ...(incrementActiveMemberCount
+                  ? { leftMemberCount: { increment: 1 } }
+                  : {}),
+              }
+            : {
+                rightAvailableCoins: { increment: coins },
+                ...(incrementActiveMemberCount
+                  ? { rightMemberCount: { increment: 1 } }
+                  : {}),
+              },
+        }),
+      ]),
+    );
 
     await tx.commissionLedger.create({
       data: {
@@ -563,5 +607,5 @@ export async function propagateOrderCoinsToUpline(input: {
     });
 
     return { propagated: true };
-  });
+  }, TX_OPTIONS);
 }
